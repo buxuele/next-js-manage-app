@@ -202,7 +202,7 @@ export async function deleteProjectConfig(projectId: string): Promise<boolean> {
 
     client.release();
 
-    const deleted = result.rowCount > 0;
+    const deleted = (result.rowCount ?? 0) > 0;
     if (deleted) {
       console.log("Successfully deleted project:", projectId);
     }

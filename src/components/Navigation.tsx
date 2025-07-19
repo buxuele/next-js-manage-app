@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { signOut, useSession } from "next-auth/react";
 
@@ -53,12 +54,12 @@ export default function Navigation() {
                   role="button"
                   data-bs-toggle="dropdown"
                 >
-                  <img
+                  <Image
                     src={session.user.image || "/default-avatar.png"}
                     alt="用户头像"
                     className="rounded-circle me-2"
-                    width="32"
-                    height="32"
+                    width={32}
+                    height={32}
                     style={{ objectFit: "cover" }}
                   />
                   {session.user.name || session.user.email}

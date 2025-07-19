@@ -57,7 +57,6 @@ export async function POST(
     await updateProjectConfig(id, {
       isRunning: true,
       port: status.port,
-      url: `http://localhost:${status.port}`,
       lastAccessed: new Date(),
     });
 

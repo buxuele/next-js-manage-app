@@ -220,7 +220,7 @@ export default function ProjectManager() {
             } else {
               errorCount++;
             }
-          } catch (error) {
+          } catch {
             errorCount++;
           }
         }

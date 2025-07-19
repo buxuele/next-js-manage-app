@@ -63,7 +63,6 @@ export async function POST(
     // 更新项目配置
     await updateProjectConfig(id, {
       isRunning: false,
-      url: undefined,
     });
 
     return NextResponse.json({
