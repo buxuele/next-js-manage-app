@@ -183,8 +183,7 @@ export default function ProjectManager() {
         </div>
         <h4 className="text-muted">暂无项目</h4>
         <p className="text-muted">
-          还没有添加任何 Next.js
-          项目。点击上方的&ldquo;添加项目&rdquo;按钮开始吧！
+          还没有添加任何开发项目。点击上方的&ldquo;添加项目&rdquo;按钮开始管理您的端口！
         </p>
       </div>
     );
@@ -196,8 +195,8 @@ export default function ProjectManager() {
       {/* 头部工具栏 */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="mb-1">项目管理</h2>
-          <p className="text-muted mb-0">管理您的 Next.js 项目</p>
+          <h2 className="mb-1">端口管理</h2>
+          <p className="text-muted mb-0">管理您的开发端口和项目</p>
         </div>
         <button
           className="btn btn-primary"

@@ -1,13 +1,16 @@
 {
-  "name": "next-js-gist-app",
+  "name": "next-js-manage-app",
   "functions": {
     "src/app/api/**/*.ts": {
-      "maxDuration": 10
+      "maxDuration": 30
     }
   },
   "build": {
     "env": {
       "NEXT_TELEMETRY_DISABLED": "1"
     }
+  },
+  "env": {
+    "NEXTAUTH_URL": "https://next-js-manage-app.vercel.app"
   }
 }

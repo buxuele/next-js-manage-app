@@ -12,7 +12,7 @@ export default function LoginPage() {
     // 检查用户是否已经登录
     getSession().then((session) => {
       if (session) {
-        router.push("/");
+        router.push("/projects");
       }
     });
   }, [router]);
@@ -20,7 +20,7 @@ export default function LoginPage() {
   const handleGitHubLogin = async () => {
     setIsLoading(true);
     try {
-      await signIn("github", { callbackUrl: "/" });
+      await signIn("github", { callbackUrl: "/projects" });
     } catch (error) {
       console.error("Login error:", error);
       setIsLoading(false);
@@ -36,11 +36,11 @@ export default function LoginPage() {
               <div className="card-body p-5">
                 <div className="text-center mb-4">
                   <h1 className="h3 text-white mb-3">
-                    <i className="bi bi-grid-1x2-fill me-2"></i>
-                    我的知识库
+                    <i className="bi bi-hdd-network me-2"></i>
+                    我的端口中心
                   </h1>
                   <p className="text-muted">
-                    使用 GitHub 账号登录来管理你的代码片段
+                    使用 GitHub 账号登录来管理你的开发端口
                   </p>
                 </div>
 

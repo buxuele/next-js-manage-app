@@ -5,8 +5,8 @@ import Navigation from "@/components/Navigation";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "我的代码片段",
-  description: "基于 Next.js 的现代化知识库",
+  title: "我的端口中心",
+  description: "基于 Next.js 的端口管理工具",
 };
 
 export default function RootLayout({

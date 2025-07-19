@@ -1,70 +1,148 @@
 #!/usr/bin/env node
 
 /**
- * 部署配置检查脚本
- * 检查 NextAuth 和 GitHub OAuth 配置是否正确
+ * 检查 Vercel 部署状态的脚本
+ * 用于诊断部署后的问题
  */
 
-console.log("🔍 检查部署配置...\n");
+const https = require("https");
+const http = require("http");
 
-// 检查必需的环境变量
-const requiredEnvVars = [
-  "NEXTAUTH_URL",
-  "NEXTAUTH_SECRET",
-  "GITHUB_CLIENT_ID",
-  "GITHUB_CLIENT_SECRET",
-  "DATABASE_URL",
-];
+const DEPLOYMENT_URL = "https://next-js-manage-app.vercel.app";
 
-console.log("📋 检查环境变量:");
-let missingVars = [];
+async function makeRequest(url, options = {}) {
+  return new Promise((resolve, reject) => {
+    const protocol = url.startsWith("https:") ? https : http;
 
-requiredEnvVars.forEach((varName) => {
-  const value = process.env[varName];
-  if (value) {
-    console.log(
-      `✅ ${varName}: ${
-        varName === "NEXTAUTH_SECRET" ||
-        varName === "GITHUB_CLIENT_SECRET" ||
-        varName === "DATABASE_URL"
-          ? "[已设置]"
-          : value
-      }`
+    const req = protocol.request(
+      url,
+      {
+        method: options.method || "GET",
+        headers: {
+          "User-Agent": "Deployment-Checker/1.0",
+          ...options.headers,
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk) => (data += chunk));
+        res.on("end", () => {
+          resolve({
+            status: res.statusCode,
+            headers: res.headers,
+            data: data,
+          });
+        });
+      }
     );
-  } else {
-    console.log(`❌ ${varName}: 未设置`);
-    missingVars.push(varName);
+
+    req.on("error", reject);
+
+    if (options.body) {
+      req.write(options.body);
+    }
+
+    req.end();
+  });
+}
+
+async function checkEndpoint(name, url, expectedStatus = 200) {
+  console.log(`🔍 检查 ${name}...`);
+
+  try {
+    const response = await makeRequest(url);
+
+    if (response.status === expectedStatus) {
+      console.log(`✅ ${name}: 状态 ${response.status} - 正常`);
+      return true;
+    } else {
+      console.log(`❌ ${name}: 状态 ${response.status} - 异常`);
+      if (response.status >= 400) {
+        console.log(`   错误内容: ${response.data.substring(0, 200)}...`);
+      }
+      return false;
+    }
+  } catch (error) {
+    console.log(`❌ ${name}: 请求失败 - ${error.message}`);
+    return false;
   }
-});
-
-console.log("\n🔗 检查 URL 配置:");
-const nextAuthUrl = process.env.NEXTAUTH_URL;
-if (nextAuthUrl) {
-  console.log(`✅ NEXTAUTH_URL: ${nextAuthUrl}`);
-  console.log(`✅ 预期的回调 URL: ${nextAuthUrl}/api/auth/callback/github`);
-} else {
-  console.log("❌ NEXTAUTH_URL 未设置");
 }
 
-console.log("\n📝 GitHub OAuth 应用配置检查清单:");
-console.log("□ 访问 https://github.com/settings/developers");
-console.log("□ 找到你的 OAuth App");
-console.log("□ 确认 Client ID 匹配");
-console.log("□ 在 Authorization callback URL 中添加:");
-if (nextAuthUrl) {
-  console.log(`   ${nextAuthUrl}/api/auth/callback/github`);
-} else {
-  console.log("   [需要先设置 NEXTAUTH_URL]");
+async function checkDeployment() {
+  console.log("🚀 开始检查 Vercel 部署状态...\n");
+
+  const checks = [
+    {
+      name: "主页",
+      url: DEPLOYMENT_URL,
+      expectedStatus: 200,
+    },
+    {
+      name: "NextAuth Session API",
+      url: `${DEPLOYMENT_URL}/api/auth/session`,
+      expectedStatus: 200,
+    },
+    {
+      name: "NextAuth Providers API",
+      url: `${DEPLOYMENT_URL}/api/auth/providers`,
+      expectedStatus: 200,
+    },
+    {
+      name: "NextAuth CSRF API",
+      url: `${DEPLOYMENT_URL}/api/auth/csrf`,
+      expectedStatus: 200,
+    },
+    {
+      name: "登录页面",
+      url: `${DEPLOYMENT_URL}/login`,
+      expectedStatus: 200,
+    },
+    {
+      name: "项目管理页面",
+      url: `${DEPLOYMENT_URL}/projects`,
+      expectedStatus: 200,
+    },
+    {
+      name: "Gists API",
+      url: `${DEPLOYMENT_URL}/api/gists`,
+      expectedStatus: 200,
+    },
+  ];
+
+  let passedChecks = 0;
+
+  for (const check of checks) {
+    const passed = await checkEndpoint(
+      check.name,
+      check.url,
+      check.expectedStatus
+    );
+    if (passed) passedChecks++;
+    console.log(""); // 空行分隔
+  }
+
+  console.log("📊 检查结果汇总:");
+  console.log(`✅ 通过: ${passedChecks}/${checks.length}`);
+  console.log(`❌ 失败: ${checks.length - passedChecks}/${checks.length}`);
+
+  if (passedChecks === checks.length) {
+    console.log("\n🎉 所有检查都通过了！部署状态良好。");
+  } else {
+    console.log("\n⚠️  部分检查失败，请检查以下问题:");
+    console.log("1. 确保所有环境变量都已在 Vercel 控制台设置");
+    console.log("2. 确保数据库表已正确创建");
+    console.log("3. 确保 GitHub OAuth 应用配置正确");
+    console.log("4. 检查 Vercel 函数日志获取详细错误信息");
+  }
+
+  return passedChecks === checks.length;
 }
 
-if (missingVars.length > 0) {
-  console.log("\n❌ 发现问题:");
-  console.log(`缺少环境变量: ${missingVars.join(", ")}`);
-  console.log("\n🛠️  解决方案:");
-  console.log("1. 在 Vercel 项目设置中添加缺少的环境变量");
-  console.log("2. 重新部署项目");
-  process.exit(1);
-} else {
-  console.log("\n✅ 所有环境变量都已设置！");
-  console.log("\n🚀 如果仍有问题，请检查 GitHub OAuth 应用配置");
+// 如果直接运行此脚本
+if (require.main === module) {
+  checkDeployment().then((success) => {
+    process.exit(success ? 0 : 1);
+  });
 }
+
+module.exports = { checkDeployment };

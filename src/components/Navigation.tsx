@@ -15,9 +15,9 @@ export default function Navigation() {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
       <div className="container-fluid">
-        <Link className="navbar-brand" href="/">
-          <i className="bi bi-code-square me-2"></i>
-          开发工具箱
+        <Link className="navbar-brand" href="/projects">
+          <i className="bi bi-hdd-network me-2"></i>
+          我的端口中心
         </Link>
 
         <button
@@ -33,22 +33,13 @@ export default function Navigation() {
           <ul className="navbar-nav me-auto">
             <li className="nav-item">
               <Link
-                className={`nav-link ${pathname === "/" ? "active" : ""}`}
-                href="/"
-              >
-                <i className="bi bi-file-text me-1"></i>
-                代码片段
-              </Link>
-            </li>
-            <li className="nav-item">
-              <Link
                 className={`nav-link ${
                   pathname === "/projects" ? "active" : ""
                 }`}
                 href="/projects"
               >
-                <i className="bi bi-folder-fill me-1"></i>
-                项目管理
+                <i className="bi bi-hdd-network me-1"></i>
+                端口管理
               </Link>
             </li>
           </ul>
@@ -57,12 +48,19 @@ export default function Navigation() {
             {session?.user && (
               <li className="nav-item dropdown">
                 <a
-                  className="nav-link dropdown-toggle"
+                  className="nav-link dropdown-toggle d-flex align-items-center"
                   href="#"
                   role="button"
                   data-bs-toggle="dropdown"
                 >
-                  <i className="bi bi-person-circle me-1"></i>
+                  <img
+                    src={session.user.image || "/default-avatar.png"}
+                    alt="用户头像"
+                    className="rounded-circle me-2"
+                    width="32"
+                    height="32"
+                    style={{ objectFit: "cover" }}
+                  />
                   {session.user.name || session.user.email}
                 </a>
                 <ul className="dropdown-menu dropdown-menu-end">

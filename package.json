@@ -12,7 +12,8 @@
     "verify:fix": "node scripts/verify-fix.js",
     "migrate:neon": "node scripts/migrate-to-neon.js",
     "check:deployment": "node scripts/check-deployment.js",
-    "db:setup": "echo 请在 Neon 控制台执行 database/schema.sql 中的 SQL 语句来创建表",
+    "db:setup": "node scripts/setup-database.js",
+    "setup-database": "node scripts/setup-database.js",
     "test:projects": "node scripts/run-tests.js"
   },
   "dependencies": {

@@ -17,6 +17,7 @@ export const authOptions = {
       clientSecret: process.env.GITHUB_CLIENT_SECRET!,
     }),
   ],
+  secret: process.env.NEXTAUTH_SECRET,
   callbacks: {
     async signIn({ user, account, profile }: any) {
       if (account?.provider === "github" && profile) {
