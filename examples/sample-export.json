@@ -1,0 +1,41 @@
+{
+  "version": "1.0",
+  "exportTime": "2024-01-20T10:30:00.000Z",
+  "projects": [
+    {
+      "name": "Next.js 博客项目",
+      "description": "基于 Next.js 的个人博客网站",
+      "path": "D:\\projects\\nextjs-blog",
+      "port": 3000,
+      "icon": "/project-icons/nextjs.png"
+    },
+    {
+      "name": "React 管理后台",
+      "description": "企业级管理系统前端",
+      "path": "D:\\projects\\react-admin",
+      "port": 3001,
+      "icon": "/project-icons/react.png"
+    },
+    {
+      "name": "Vue.js 电商网站",
+      "description": "基于 Vue 3 的电商平台",
+      "path": "D:\\projects\\vue-ecommerce",
+      "port": 8080,
+      "icon": "/project-icons/vue.png"
+    },
+    {
+      "name": "Express API 服务",
+      "description": "Node.js 后端 API 服务",
+      "path": "D:\\projects\\express-api",
+      "port": 5000,
+      "icon": "/project-icons/nodejs.png"
+    },
+    {
+      "name": "Angular 企业应用",
+      "description": "大型企业级 Angular 应用",
+      "path": "D:\\projects\\angular-enterprise",
+      "port": 4200,
+      "icon": "/project-icons/angular.png"
+    }
+  ]
+}

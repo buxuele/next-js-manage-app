@@ -139,6 +139,117 @@ export default function ProjectManager() {
     setProjects((prev) => [...prev, newProject]);
   };
 
+  // 导出项目配置
+  const handleExportProjects = () => {
+    try {
+      const exportData = {
+        version: "1.0",
+        exportTime: new Date().toISOString(),
+        projects: projects.map((project) => ({
+          name: project.name,
+          description: project.description,
+          path: project.path,
+          port: project.port,
+          icon: project.icon,
+        })),
+      };
+
+      const dataStr = JSON.stringify(exportData, null, 2);
+      const dataBlob = new Blob([dataStr], { type: "application/json" });
+
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(dataBlob);
+      link.download = `projects-export-${
+        new Date().toISOString().split("T")[0]
+      }.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+
+      showSuccess("导出成功", `已导出 ${projects.length} 个项目配置`);
+    } catch (error) {
+      console.error("Error exporting projects:", error);
+      showError("导出失败", "导出项目配置时发生错误");
+    }
+  };
+
+  // 导入项目配置
+  const handleImportProjects = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const content = e.target?.result as string;
+        const importData = JSON.parse(content);
+
+        // 验证导入数据格式
+        if (!importData.projects || !Array.isArray(importData.projects)) {
+          showError("导入失败", "无效的文件格式");
+          return;
+        }
+
+        let successCount = 0;
+        let errorCount = 0;
+
+        // 逐个导入项目
+        for (const projectData of importData.projects) {
+          try {
+            if (!projectData.name || !projectData.path) {
+              errorCount++;
+              continue;
+            }
+
+            const response = await fetch("/api/projects", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                name: projectData.name,
+                description: projectData.description || "",
+                path: projectData.path,
+                port: projectData.port || 3000,
+              }),
+            });
+
+            const data: ApiResponse = await response.json();
+            if (data.success) {
+              successCount++;
+            } else {
+              errorCount++;
+            }
+          } catch (error) {
+            errorCount++;
+          }
+        }
+
+        // 刷新项目列表
+        await fetchProjects();
+
+        // 显示导入结果
+        if (successCount > 0) {
+          showSuccess(
+            "导入完成",
+            `成功导入 ${successCount} 个项目${
+              errorCount > 0 ? `，失败 ${errorCount} 个` : ""
+            }`
+          );
+        } else {
+          showError("导入失败", "没有成功导入任何项目");
+        }
+      } catch (error) {
+        console.error("Error importing projects:", error);
+        showError("导入失败", "解析文件时发生错误");
+      }
+    };
+
+    reader.readAsText(file);
+    // 清空文件输入，允许重复选择同一文件
+    event.target.value = "";
+  };
+
   // 加载状态
   if (loading) {
     return (
@@ -198,21 +309,85 @@ export default function ProjectManager() {
           <h2 className="mb-1">端口管理</h2>
           <p className="text-muted mb-0">管理您的开发端口和项目</p>
         </div>
-        <button
-          className="btn btn-primary"
-          onClick={() => setShowAddModal(true)}
-        >
-          <svg
-            width="16"
-            height="16"
-            fill="currentColor"
-            className="me-2"
-            viewBox="0 0 16 16"
+        <div className="btn-group" role="group">
+          <button
+            className="btn btn-primary"
+            onClick={() => setShowAddModal(true)}
           >
-            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-          </svg>
-          添加项目
-        </button>
+            <svg
+              width="16"
+              height="16"
+              fill="currentColor"
+              className="me-2"
+              viewBox="0 0 16 16"
+            >
+              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+            </svg>
+            添加项目
+          </button>
+          <div className="btn-group" role="group">
+            <button
+              type="button"
+              className="btn btn-outline-primary dropdown-toggle"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <svg
+                width="16"
+                height="16"
+                fill="currentColor"
+                className="me-1"
+                viewBox="0 0 16 16"
+              >
+                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
+              </svg>
+              更多
+            </button>
+            <ul className="dropdown-menu">
+              <li>
+                <button
+                  className="dropdown-item"
+                  onClick={handleExportProjects}
+                  disabled={projects.length === 0}
+                >
+                  <svg
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    className="me-2"
+                    viewBox="0 0 16 16"
+                  >
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
+                  </svg>
+                  导出配置
+                </button>
+              </li>
+              <li>
+                <label className="dropdown-item" style={{ cursor: "pointer" }}>
+                  <svg
+                    width="16"
+                    height="16"
+                    fill="currentColor"
+                    className="me-2"
+                    viewBox="0 0 16 16"
+                  >
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
+                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
+                  </svg>
+                  导入配置
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleImportProjects}
+                    style={{ display: "none" }}
+                  />
+                </label>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* 项目网格 */}
