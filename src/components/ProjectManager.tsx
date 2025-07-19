@@ -1,0 +1,246 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import { ProjectConfig, ApiResponse } from "@/types";
+import ProjectCard from "./ProjectCard";
+import LoadingSpinner from "./LoadingSpinner";
+import AddProjectModal from "./AddProjectModal";
+import ToastContainer from "./Toast";
+import { useToast } from "@/hooks/useToast";
+
+export default function ProjectManager() {
+  const [projects, setProjects] = useState<ProjectConfig[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [showAddModal, setShowAddModal] = useState(false);
+  const { toasts, removeToast, showSuccess, showError, showInfo } = useToast();
+
+  // 获取项目列表
+  const fetchProjects = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      const response = await fetch("/api/projects");
+      const data: ApiResponse<ProjectConfig[]> = await response.json();
+
+      if (data.success && data.data) {
+        setProjects(data.data);
+      } else {
+        setError(data.error || "Failed to fetch projects");
+      }
+    } catch (err) {
+      console.error("Error fetching projects:", err);
+      setError("Failed to load projects");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // 组件挂载时获取项目列表
+  useEffect(() => {
+    fetchProjects();
+  }, []);
+
+  // 启动项目
+  const handleStartProject = async (projectId: string) => {
+    try {
+      showInfo("启动中", "正在启动项目...");
+      const response = await fetch(`/api/projects/${projectId}/start`, {
+        method: "POST",
+      });
+      const data: ApiResponse = await response.json();
+
+      if (!data.success) {
+        showError("启动失败", data.error || "未知错误");
+      } else {
+        showSuccess("启动成功", "项目已成功启动");
+        // 刷新项目列表
+        await fetchProjects();
+      }
+    } catch (error) {
+      console.error("Error starting project:", error);
+      showError("启动失败", "启动项目时发生网络错误");
+    }
+  };
+
+  // 停止项目
+  const handleStopProject = async (projectId: string) => {
+    try {
+      showInfo("停止中", "正在停止项目...");
+      const response = await fetch(`/api/projects/${projectId}/stop`, {
+        method: "POST",
+      });
+      const data: ApiResponse = await response.json();
+
+      if (!data.success) {
+        showError("停止失败", data.error || "未知错误");
+      } else {
+        showSuccess("停止成功", "项目已成功停止");
+        // 刷新项目列表
+        await fetchProjects();
+      }
+    } catch (error) {
+      console.error("Error stopping project:", error);
+      showError("停止失败", "停止项目时发生网络错误");
+    }
+  };
+
+  // 打开项目目录
+  const handleOpenDirectory = async (projectId: string) => {
+    try {
+      const response = await fetch(
+        `/api/projects/${projectId}/open-directory`,
+        {
+          method: "POST",
+        }
+      );
+      const data: ApiResponse = await response.json();
+
+      if (!data.success) {
+        showError("打开目录失败", data.error || "未知错误");
+      } else {
+        showSuccess("目录已打开", "项目目录已在文件管理器中打开");
+      }
+    } catch (error) {
+      console.error("Error opening directory:", error);
+      showError("打开目录失败", "打开目录时发生网络错误");
+    }
+  };
+
+  // 在浏览器中打开 URL
+  const handleOpenUrl = (url: string) => {
+    window.open(url, "_blank");
+  };
+
+  // 删除项目
+  const handleDeleteProject = async (projectId: string) => {
+    try {
+      const response = await fetch(`/api/projects/${projectId}`, {
+        method: "DELETE",
+      });
+      const data: ApiResponse = await response.json();
+
+      if (data.success) {
+        // 从本地状态中移除项目
+        setProjects((prev) => prev.filter((p) => p.id !== projectId));
+        showSuccess("删除成功", "项目已成功删除");
+      } else {
+        showError("删除失败", data.error || "未知错误");
+      }
+    } catch (error) {
+      console.error("Error deleting project:", error);
+      showError("删除失败", "删除项目时发生网络错误");
+    }
+  };
+
+  // 处理项目添加成功
+  const handleProjectAdded = (newProject: ProjectConfig) => {
+    setProjects((prev) => [...prev, newProject]);
+  };
+
+  // 加载状态
+  if (loading) {
+    return (
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "400px" }}
+      >
+        <LoadingSpinner />
+      </div>
+    );
+  }
+
+  // 错误状态
+  if (error) {
+    return (
+      <div className="alert alert-danger" role="alert">
+        <h4 className="alert-heading">加载失败</h4>
+        <p>{error}</p>
+        <hr />
+        <button className="btn btn-outline-danger" onClick={fetchProjects}>
+          重试
+        </button>
+      </div>
+    );
+  }
+
+  // 空状态
+  if (projects.length === 0) {
+    return (
+      <div className="text-center py-5">
+        <div className="mb-4">
+          <svg
+            width="64"
+            height="64"
+            fill="currentColor"
+            className="text-muted"
+            viewBox="0 0 16 16"
+          >
+            <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13zM1 1.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-13z" />
+            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
+          </svg>
+        </div>
+        <h4 className="text-muted">暂无项目</h4>
+        <p className="text-muted">
+          还没有添加任何 Next.js
+          项目。点击上方的&ldquo;添加项目&rdquo;按钮开始吧！
+        </p>
+      </div>
+    );
+  }
+
+  // 项目列表
+  return (
+    <>
+      {/* 头部工具栏 */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-1">项目管理</h2>
+          <p className="text-muted mb-0">管理您的 Next.js 项目</p>
+        </div>
+        <button
+          className="btn btn-primary"
+          onClick={() => setShowAddModal(true)}
+        >
+          <svg
+            width="16"
+            height="16"
+            fill="currentColor"
+            className="me-2"
+            viewBox="0 0 16 16"
+          >
+            <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
+          </svg>
+          添加项目
+        </button>
+      </div>
+
+      {/* 项目网格 */}
+      <div className="row g-4">
+        {projects.map((project) => (
+          <div key={project.id} className="col-12 col-md-6 col-lg-4">
+            <ProjectCard
+              project={project}
+              onStart={handleStartProject}
+              onStop={handleStopProject}
+              onOpenDirectory={handleOpenDirectory}
+              onOpenUrl={handleOpenUrl}
+              onDelete={handleDeleteProject}
+            />
+          </div>
+        ))}
+      </div>
+
+      {/* 添加项目模态框 */}
+      <AddProjectModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onProjectAdded={handleProjectAdded}
+      />
+
+      {/* Toast 通知容器 */}
+      <ToastContainer toasts={toasts} onClose={removeToast} />
+    </>
+  );
+}

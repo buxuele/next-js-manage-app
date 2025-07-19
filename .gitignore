@@ -1,0 +1,28 @@
+/node_modules
+.next/
+/build
+*.pem
+
+# debug
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.pnpm-debug.log*
+
+# 账号相关，密码
+.env
+.env.local
+github_auth.md
+
+
+
+# 临时文件和日志
+read_my_files.txt
+*.log
+
+# vercel
+.vercel
+
+# typescript
+*.tsbuildinfo
+next-env.d.ts

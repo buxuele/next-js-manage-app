@@ -1,0 +1,38 @@
+{
+  "name": "next-js-manage-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "type-check": "node scripts/check-types.js",
+    "test:build": "node scripts/test-build.js",
+    "verify:fix": "node scripts/verify-fix.js",
+    "migrate:neon": "node scripts/migrate-to-neon.js",
+    "check:deployment": "node scripts/check-deployment.js",
+    "db:setup": "echo 请在 Neon 控制台执行 database/schema.sql 中的 SQL 语句来创建表",
+    "test:projects": "node scripts/run-tests.js"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.9.5",
+    "bootstrap": "^5.3.7",
+    "highlight.js": "^11.11.1",
+    "next": "15.3.4",
+    "next-auth": "^4.24.11",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/bootstrap": "^5.2.10",
+    "@types/highlight.js": "^9.12.4",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.4",
+    "typescript": "^5"
+  }
+}

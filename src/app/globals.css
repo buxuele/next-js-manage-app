@@ -1,0 +1,55 @@
+/* --- 全局暗黑主题与字体 --- */
+body { background-color: #1a1a1a; color: #e0e0e0; }
+
+/* --- 网格布局容器 --- */
+#gists-container { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1.5rem; }
+
+/* --- 卡片样式 --- */
+.card { background-color: transparent; border: 1px solid #444; border-radius: 8px; height: 100%; display: flex; flex-direction: column; transition: box-shadow 0.2s ease-in-out; overflow: hidden; }
+.card:hover { box-shadow: 0 0 15px rgba(0, 188, 212, 0.3); }
+
+/* --- 新增：卡片链接样式，确保它不破坏内部布局 --- */
+.card-header-link {
+    text-decoration: none; /* 去掉下划线 */
+    color: inherit; /* 继承文字颜色，而不是默认的链接蓝色 */
+    display: block; /* 让 <a> 标签像块级元素一样占满一行 */
+}
+.card-header-link:hover {
+    color: inherit; /* 悬浮时也不要变色，让卡片的 hover 效果生效 */
+}
+
+
+/* --- 卡片头部 --- */
+.card-header { background-color: #2c2c2c !important; padding: 0.6rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; border-bottom: 1px solid #444 !important; flex-shrink: 0; }
+.header-info { min-width: 0; }
+.gist-filename { font-size: 1.1em; font-weight: 600; color: #e91e63; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 0.1rem; }
+.gist-description { font-size: 0.8em; color: #888; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* --- 按钮样式 --- */
+.actions { display: flex; flex-direction: row; gap: 0.5rem; }
+.actions .btn-icon-text { background-color: transparent; border: 1px solid #444; color: #888; display: flex; flex-direction: column; align-items: center; padding: 0.2rem 0.4rem; line-height: 1.2; transition: all 0.2s ease; }
+.actions .btn-icon-text:hover { color: #ccc; border-color: #888; }
+.actions .btn-icon-text i { font-size: 1.1em; }
+.actions .btn-icon-text span { font-size: 0.7em; margin-top: 2px; }
+.actions .btn-copy { border-color: #00bcd4; color: #00bcd4; }
+.actions .btn-copy:hover { background-color: rgba(0, 188, 212, 0.1); color: #3fffff; border-color: #3fffff; }
+.actions .btn-copy.btn-success-custom { background-color: #28a745 !important; border-color: #28a745 !important; color: #fff !important; }
+
+/* --- 代码区布局 --- */
+.card-body { padding: 0; flex-grow: 1; overflow: hidden; background-color: #212121; display: flex; flex-direction: column; }
+.code-container { display: flex; flex-grow: 1; overflow: hidden; }
+.line-numbers, .code-container pre code { margin: 0; line-height: 1.45; font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; font-size: 0.875em; }
+.line-numbers, .code-container pre { padding-top: 0.5rem; padding-bottom: 0.5rem; margin: 0; }
+.line-numbers { color: #6c757d; text-align: right; padding-left: 1rem; padding-right: 1rem; border-right: 1px solid #444c56; -webkit-user-select: none; user-select: none; }
+.code-container pre { flex-grow: 1; overflow: auto; }
+.code-container pre code { padding-left: 1rem; padding-right: 1rem; display: block; }
+
+/* --- 脚部 --- */
+.card-footer { background-color: #2c2c2c !important; border-top: 1px dashed #444 !important; padding: 0.2rem !important; flex-shrink: 0; }
+.btn-toggle-expand { width: 100%; border: none; color: #888; font-size: 0.8em; }
+.btn-toggle-expand:hover { background-color: #383838; color: #ccc; }
+
+/* --- 响应式布局 --- */
+@media (max-width: 1600px) { #gists-container { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 1200px) { #gists-container { grid-template-columns: repeat(2, 1fr); } }
+@media (max-width: 768px) { #gists-container { grid-template-columns: 1fr; } }
