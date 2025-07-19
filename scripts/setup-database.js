@@ -5,6 +5,9 @@
  * 用于在 Neon 数据库中创建必要的表结构
  */
 
+// 加载环境变量
+require("dotenv").config({ path: ".env.local" });
+
 const { Pool } = require("@neondatabase/serverless");
 const fs = require("fs");
 const path = require("path");

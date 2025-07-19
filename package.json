@@ -19,6 +19,7 @@
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",
     "bootstrap": "^5.3.7",
+    "dotenv": "^17.2.0",
     "highlight.js": "^11.11.1",
     "next": "15.3.4",
     "next-auth": "^4.24.11",

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-config";
 import {
   getProjectConfig,
   updateProjectConfig,
@@ -20,6 +22,19 @@ export async function GET(
   { params }: RouteParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    // 检查用户认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const project = await getProjectConfig(id);
 
@@ -61,6 +76,19 @@ export async function PUT(
   { params }: RouteParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    // 检查用户认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const updates = await request.json();
 
@@ -104,6 +132,19 @@ export async function DELETE(
   { params }: RouteParams
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    // 检查用户认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const { id } = await params;
     const deleted = await deleteProjectConfig(id);
 

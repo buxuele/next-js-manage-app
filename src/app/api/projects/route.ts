@@ -1,13 +1,28 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getServerSession } from "next-auth/next";
+import { authOptions } from "@/lib/auth-config";
 import { readProjectsConfig, addProjectConfig } from "@/lib/project-config";
 import { ApiResponse, ProjectFormData } from "@/types";
 
 /**
- * GET /api/projects - 获取所有项目配置
+ * GET /api/projects - 获取当前用户的所有项目配置
  */
 export async function GET(): Promise<NextResponse<ApiResponse>> {
   try {
-    const projects = await readProjectsConfig();
+    // 检查用户认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
+    const projects = await readProjectsConfig(session.user.id);
 
     return NextResponse.json({
       success: true,
@@ -34,6 +49,19 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse>> {
   try {
+    // 检查用户认证
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: "Unauthorized",
+          code: "UNAUTHORIZED",
+        },
+        { status: 401 }
+      );
+    }
+
     const body: ProjectFormData = await request.json();
 
     // 基本验证
@@ -60,13 +88,15 @@ export async function POST(
       );
     }
 
-    const newProject = await addProjectConfig({
-      name: body.name.trim(),
-      description: body.description?.trim() || "",
-      path: body.path.trim(),
-      port: body.port || 3000,
-      isRunning: false,
-    });
+    const newProject = await addProjectConfig(
+      {
+        name: body.name.trim(),
+        description: body.description?.trim() || "",
+        path: body.path.trim(),
+        port: body.port || 3000,
+      },
+      session.user.id
+    );
 
     return NextResponse.json(
       {
