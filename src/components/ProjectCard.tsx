@@ -104,17 +104,14 @@ export default function ProjectCard({
     return name.charAt(0).toUpperCase();
   };
 
-  // 根据项目ID生成颜色
+  // 根据项目ID生成颜色 - 与Flask项目保持一致
   const getProjectColor = (id: string) => {
     const colors = [
-      "#8B5CF6", // 紫色
-      "#06B6D4", // 青色
-      "#10B981", // 绿色
-      "#F59E0B", // 黄色
-      "#EF4444", // 红色
-      "#3B82F6", // 蓝色
-      "#F97316", // 橙色
-      "#84CC16", // 青绿色
+      "#8B5CF6", // 紫色 - P
+      "#17A2B8", // 青色 - R
+      "#FD7E14", // 橙色 - U
+      "#6C757D", // 灰色 - F
+      "#DC3545", // 红色 - G
     ];
     const index = parseInt(id) % colors.length;
     return colors[index];
@@ -127,52 +124,59 @@ export default function ProjectCard({
   return (
     <div
       style={{
-        background: "rgba(255, 255, 255, 0.95)",
-        borderRadius: "16px",
-        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
-        backdropFilter: "blur(10px)",
-        border: "1px solid rgba(255, 255, 255, 0.2)",
+        background: "white",
+        borderRadius: "12px",
+        boxShadow: "0 4px 12px rgba(0, 0, 0, 0.1)",
         transition: "all 0.3s ease",
-        height: "280px",
+        height: "240px",
         overflow: "hidden",
+        border: "1px solid rgba(0, 0, 0, 0.05)",
       }}
       className="project-card"
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-4px)";
-        e.currentTarget.style.boxShadow = "0 12px 40px rgba(0, 0, 0, 0.15)";
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 8px 20px rgba(0, 0, 0, 0.15)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 8px 32px rgba(0, 0, 0, 0.1)";
+        e.currentTarget.style.boxShadow = "0 4px 12px rgba(0, 0, 0, 0.1)";
       }}
     >
       {/* 项目图标和名称 */}
-      <div className="p-4 text-center">
-        <div className="mb-3">
+      <div
+        className="p-3 text-center"
+        style={{
+          height: "140px",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "center",
+        }}
+      >
+        <div className="mb-2">
           {project.icon ? (
             <Image
               src={project.icon}
               alt={`${project.name} icon`}
-              width={60}
-              height={60}
+              width={50}
+              height={50}
               className="rounded-circle"
               style={{ objectFit: "cover" }}
             />
           ) : (
             <div
               style={{
-                width: "60px",
-                height: "60px",
+                width: "50px",
+                height: "50px",
                 background: projectColor,
                 borderRadius: "50%",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
                 color: "white",
-                fontSize: "24px",
+                fontSize: "20px",
                 fontWeight: "bold",
                 margin: "0 auto",
-                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+                boxShadow: "0 2px 8px rgba(0, 0, 0, 0.2)",
               }}
             >
               {getProjectInitial(project.name)}
@@ -180,19 +184,27 @@ export default function ProjectCard({
           )}
         </div>
 
-        <h6 className="fw-bold text-dark mb-2" style={{ fontSize: "16px" }}>
+        <h6
+          className="fw-bold text-dark mb-1"
+          style={{ fontSize: "14px", lineHeight: "1.2" }}
+        >
           {project.name}
         </h6>
 
         <p
-          className="text-muted small mb-3"
-          style={{ fontSize: "12px", height: "36px", overflow: "hidden" }}
+          className="text-muted small mb-0"
+          style={{
+            fontSize: "11px",
+            height: "32px",
+            overflow: "hidden",
+            lineHeight: "1.3",
+          }}
         >
           {project.description || "暂无描述"}
         </p>
       </div>
 
-      {/* 底部按钮区域 */}
+      {/* 底部按钮区域 - 完全按照Flask项目的样式 */}
       <div className="mt-auto">
         <div className="row g-0">
           {/* 启动按钮 */}
@@ -203,16 +215,16 @@ export default function ProjectCard({
                 onClick={handleStop}
                 disabled={loading.stop}
                 style={{
-                  background: "#DC3545",
+                  background: "#28A745",
                   color: "white",
-                  fontSize: "12px",
-                  padding: "12px 8px",
+                  fontSize: "11px",
+                  padding: "8px 4px",
                   fontWeight: "500",
                   border: "none",
-                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  borderTop: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                {loading.stop ? "停止中..." : "停止"}
+                {loading.stop ? "停止中" : "停止"}
               </button>
             ) : (
               <button
@@ -222,14 +234,14 @@ export default function ProjectCard({
                 style={{
                   background: "#28A745",
                   color: "white",
-                  fontSize: "12px",
-                  padding: "12px 8px",
+                  fontSize: "11px",
+                  padding: "8px 4px",
                   fontWeight: "500",
                   border: "none",
-                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                  borderTop: "1px solid rgba(255,255,255,0.2)",
                 }}
               >
-                {loading.start ? "启动中..." : "启动"}
+                {loading.start ? "启动中" : "启动"}
               </button>
             )}
           </div>
@@ -243,12 +255,12 @@ export default function ProjectCard({
               style={{
                 background: isRunning ? "#007BFF" : "#6C757D",
                 color: "white",
-                fontSize: "12px",
-                padding: "12px 8px",
+                fontSize: "11px",
+                padding: "8px 4px",
                 fontWeight: "500",
                 border: "none",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                borderLeft: "1px solid rgba(255,255,255,0.1)",
+                borderTop: "1px solid rgba(255,255,255,0.2)",
+                borderLeft: "1px solid rgba(255,255,255,0.2)",
               }}
             >
               访问网址
@@ -266,15 +278,15 @@ export default function ProjectCard({
               style={{
                 background: "#17A2B8",
                 color: "white",
-                fontSize: "12px",
-                padding: "12px 8px",
+                fontSize: "11px",
+                padding: "8px 4px",
                 fontWeight: "500",
                 border: "none",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                borderBottomLeftRadius: "16px",
+                borderTop: "1px solid rgba(255,255,255,0.2)",
+                borderBottomLeftRadius: "12px",
               }}
             >
-              {loading.openDir ? "打开中..." : "打开目录"}
+              {loading.openDir ? "打开中" : "打开目录"}
             </button>
           </div>
 
@@ -287,16 +299,16 @@ export default function ProjectCard({
               style={{
                 background: isRunning ? "#6C757D" : "#FFC107",
                 color: isRunning ? "white" : "#212529",
-                fontSize: "12px",
-                padding: "12px 8px",
+                fontSize: "11px",
+                padding: "8px 4px",
                 fontWeight: "500",
                 border: "none",
-                borderTop: "1px solid rgba(255,255,255,0.1)",
-                borderLeft: "1px solid rgba(255,255,255,0.1)",
-                borderBottomRightRadius: "16px",
+                borderTop: "1px solid rgba(255,255,255,0.2)",
+                borderLeft: "1px solid rgba(255,255,255,0.2)",
+                borderBottomRightRadius: "12px",
               }}
             >
-              {loading.delete ? "删除中..." : "删除"}
+              {loading.delete ? "删除中" : "删除"}
             </button>
           </div>
         </div>

@@ -9,36 +9,35 @@ body {
   overflow-x: hidden;
 }
 
-/* 项目卡片悬停效果 */
+/* 项目卡片悬停效果 - 与Flask项目一致 */
 .project-card {
   transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .project-card:hover {
-  transform: translateY(-4px) scale(1.02);
+  transform: translateY(-2px);
 }
 
-/* 按钮悬停效果 */
+/* 按钮悬停效果 - 更加微妙 */
 .project-card button {
   transition: all 0.2s ease;
 }
 
 .project-card button:hover:not(:disabled) {
-  transform: translateY(-1px);
-  filter: brightness(1.1);
+  filter: brightness(1.05);
 }
 
 .project-card button:active:not(:disabled) {
-  transform: translateY(0);
+  transform: translateY(1px);
 }
 
-/* 项目图标动画 */
+/* 项目图标动画 - 减少动画效果 */
 .project-icon {
   transition: all 0.3s ease;
 }
 
 .project-card:hover .project-icon {
-  transform: scale(1.1);
+  transform: scale(1.05);
 }
 
 /* 自定义滚动条 */
@@ -113,108 +112,32 @@ body {
 @media (max-width: 768px) {
   .project-card {
     height: auto !important;
-    min-height: 260px;
+    min-height: 220px;
   }
 
-  .project-card .p-4 {
-    padding: 1rem !important;
+  .project-card .p-3 {
+    padding: 0.75rem !important;
   }
 
   .project-card button {
-    font-size: 11px !important;
-    padding: 10px 6px !important;
+    font-size: 10px !important;
+    padding: 6px 4px !important;
   }
 }
 
 @media (max-width: 576px) {
   .project-card {
-    min-height: 240px;
+    min-height: 200px;
   }
 
   .project-card h6 {
-    font-size: 14px !important;
+    font-size: 13px !important;
   }
 
   .project-card p {
-    font-size: 11px !important;
-    height: 30px !important;
+    font-size: 10px !important;
+    height: 28px !important;
   }
-}
-
-/* 加载动画 */
-@keyframes pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.5;
-  }
-}
-
-.loading-pulse {
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-}
-
-/* 成功/错误状态指示器 */
-.status-indicator {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  display: inline-block;
-  margin-right: 8px;
-}
-
-.status-success {
-  background-color: #28a745;
-  box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
-}
-
-.status-error {
-  background-color: #dc3545;
-  box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
-}
-
-.status-warning {
-  background-color: #ffc107;
-  box-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
-}
-
-/* 工具提示样式 */
-.tooltip {
-  font-size: 12px;
-}
-
-.tooltip-inner {
-  background-color: rgba(0, 0, 0, 0.9);
-  border-radius: 6px;
-  padding: 6px 10px;
-}
-
-/* 按钮组样式优化 */
-.btn-group .btn {
-  border-radius: 20px !important;
-  margin-right: 8px;
-}
-
-.btn-group .btn:last-child {
-  margin-right: 0;
-}
-
-/* 头部标题样式 */
-.page-title {
-  background: linear-gradient(45deg, #fff, rgba(255, 255, 255, 0.8));
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-/* 空状态样式 */
-.empty-state {
-  backdrop-filter: blur(10px);
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 /* Toast 通知样式 */

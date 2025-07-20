@@ -555,10 +555,10 @@ export default function ProjectManager() {
         </div>
       </div>
 
-      {/* 项目网格 - 与Flask项目一致的布局 */}
-      <div className="row g-4">
+      {/* 项目网格 - 与Flask项目完全一致的布局 */}
+      <div className="row g-3">
         {projects.map((project) => (
-          <div key={project.id} className="col-12 col-sm-6 col-md-4 col-xl-3">
+          <div key={project.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
             <ProjectCard
               project={project}
               onStart={handleStartProject}
