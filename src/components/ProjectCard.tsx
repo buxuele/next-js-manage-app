@@ -17,6 +17,27 @@ export default function ProjectCard({
 }: ProjectCardProps) {
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
 
+  // 根据项目名称生成颜色
+  const getProjectColor = (name: string) => {
+    const colors = [
+      "#007bff", // 蓝色
+      "#28a745", // 绿色
+      "#dc3545", // 红色
+      "#ffc107", // 黄色
+      "#6f42c1", // 紫色
+      "#fd7e14", // 橙色
+      "#20c997", // 青色
+      "#e83e8c", // 粉色
+    ];
+
+    // 根据项目名称的字符码生成一个稳定的颜色索引
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    return colors[Math.abs(hash) % colors.length];
+  };
+
   // 检测项目在线状态
   useEffect(() => {
     const checkStatus = async () => {
@@ -36,10 +57,22 @@ export default function ProjectCard({
     }
   }, [project.url]);
 
-  const handleCopy = async (text: string) => {
+  const handleCopy = async (
+    text: string,
+    event: React.MouseEvent<HTMLButtonElement>
+  ) => {
+    const btn = event.currentTarget;
     try {
       await navigator.clipboard.writeText(text);
-      // 可以在这里添加成功提示的逻辑
+      const originalContent = btn.innerHTML;
+      btn.innerHTML = "已复制";
+      btn.classList.add("btn-success");
+      btn.classList.remove("btn-outline-secondary");
+      setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.remove("btn-success");
+        btn.classList.add("btn-outline-secondary");
+      }, 2000);
     } catch (err) {
       console.error("复制失败:", err);
       alert("复制失败，请重试");
@@ -109,15 +142,24 @@ export default function ProjectCard({
   return (
     <div
       className="card project-card h-100"
-      style={{ backgroundColor: "#2c2c2c", border: "1px solid #444" }}
+      style={{
+        backgroundColor: "#e9ecef",
+        border: "2px solid #495057",
+        borderRadius: "1rem",
+        boxShadow: "0 8px 24px rgba(0, 0, 0, 0.15)",
+        transform: "scale(1.05)",
+        marginBottom: "1rem",
+      }}
     >
-      <div className="card-body d-flex flex-column">
-        {/* 项目标题和状态 */}
-        <div className="d-flex justify-content-between align-items-start mb-3">
-          <div className="d-flex align-items-center">
-            {getStatusIndicator()}
-            <h5 className="card-title text-white mb-0 ms-2">{project.name}</h5>
-          </div>
+      <div
+        className="card-body d-flex flex-column"
+        style={{ backgroundColor: "#e9ecef" }}
+      >
+        {/* 卡片操作下拉菜单 - 右上角 */}
+        <div
+          className="position-absolute"
+          style={{ top: "1rem", right: "1rem" }}
+        >
           <div className="dropdown">
             <button
               className="btn btn-sm btn-outline-secondary"
@@ -147,34 +189,56 @@ export default function ProjectCard({
           </div>
         </div>
 
+        {/* 项目标题 */}
+        <h5
+          className="card-title text-dark mb-3 fw-600"
+          style={{ color: "#495057" }}
+        >
+          {project.name}
+        </h5>
+
         {/* 项目图片或图标 */}
         <div className="d-flex align-items-center mb-3">
-          <div className="project-icon me-3">
+          <div className="project-icon me-3" style={{ flexShrink: 0 }}>
             {project.image ? (
               <Image
                 src={project.image}
                 alt={project.name}
-                width={80}
-                height={80}
+                width={100}
+                height={100}
                 className="rounded"
-                style={{ objectFit: "cover" }}
+                style={{
+                  objectFit: "cover",
+                  border: "2px solid #dee2e6",
+                  borderRadius: "12px",
+                }}
               />
             ) : (
               <div
-                className="d-flex align-items-center justify-content-center rounded text-white fw-bold"
+                className="d-flex align-items-center justify-content-center text-white fw-bold"
                 style={{
-                  width: "80px",
-                  height: "80px",
-                  backgroundColor: "#007bff",
-                  fontSize: "2rem",
+                  width: "100px",
+                  height: "100px",
+                  backgroundColor: getProjectColor(project.name),
+                  fontSize: "3rem",
+                  borderRadius: "12px",
+                  flexShrink: 0,
                 }}
               >
                 {project.name.charAt(0).toUpperCase()}
               </div>
             )}
           </div>
-          <div className="flex-grow-1">
-            <p className="text-muted small mb-1">{project.description}</p>
+
+          <div className="flex-grow-1" style={{ minWidth: 0 }}>
+            {project.description && (
+              <p
+                className="card-text text-dark mb-2"
+                style={{ color: "#495057" }}
+              >
+                {project.description}
+              </p>
+            )}
           </div>
         </div>
 
@@ -182,14 +246,20 @@ export default function ProjectCard({
         <div className="mt-auto">
           {/* 项目路径 */}
           {project.path && (
-            <div className="d-flex align-items-center justify-content-between mb-2">
-              <small className="text-muted" title={project.path}>
+            <div
+              className="d-flex align-items-center mb-2"
+              style={{ fontSize: "0.85rem", fontWeight: 500, color: "#495057" }}
+            >
+              <span
+                title={project.path}
+                style={{ wordBreak: "break-all", marginRight: "0.5rem" }}
+              >
                 <i className="bi bi-folder me-1"></i>
                 {truncatePath(project.path)}
-              </small>
+              </span>
               <button
-                className="btn btn-sm btn-outline-secondary"
-                onClick={() => handleCopy(project.path)}
+                className="btn btn-sm btn-outline-secondary ms-auto"
+                onClick={(e) => handleCopy(project.path, e)}
                 title="复制路径"
               >
                 <i className="bi bi-clipboard"></i>
@@ -198,14 +268,25 @@ export default function ProjectCard({
           )}
 
           {/* 项目URL */}
-          <div className="d-flex align-items-center justify-content-between mb-3">
-            <small className="text-muted" title={project.url}>
+          <div
+            className="d-flex align-items-center mb-3"
+            style={{ fontSize: "0.85rem", fontWeight: 500, color: "#495057" }}
+          >
+            {getStatusIndicator()}
+            <span
+              title={project.url}
+              style={{
+                wordBreak: "break-all",
+                marginRight: "0.5rem",
+                marginLeft: "8px",
+              }}
+            >
               <i className="bi bi-globe me-1"></i>
               {project.url}
-            </small>
+            </span>
             <button
-              className="btn btn-sm btn-outline-secondary"
-              onClick={() => handleCopy(project.url)}
+              className="btn btn-sm btn-outline-secondary ms-auto"
+              onClick={(e) => handleCopy(project.url, e)}
               title="复制URL"
             >
               <i className="bi bi-clipboard"></i>
@@ -216,7 +297,7 @@ export default function ProjectCard({
           <div className="d-flex gap-2">
             {project.path && (
               <button
-                className="btn btn-sm btn-outline-light flex-fill"
+                className="btn btn-sm btn-outline-secondary flex-fill"
                 onClick={handleOpenFolder}
                 title="打开目录"
               >

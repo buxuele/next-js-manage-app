@@ -88,14 +88,17 @@ export default function ProjectModal({
       aria-hidden="true"
     >
       <div className="modal-dialog modal-lg">
-        <div className="modal-content bg-dark text-white">
-          <div className="modal-header border-secondary">
+        <div
+          className="modal-content"
+          style={{ backgroundColor: "#fdfaf6", color: "#495057" }}
+        >
+          <div className="modal-header">
             <h5 className="modal-title" id="projectModalLabel">
               {projectToEdit ? "编辑项目" : "添加新项目"}
             </h5>
             <button
               type="button"
-              className="btn-close btn-close-white"
+              className="btn-close"
               onClick={onClose}
             ></button>
           </div>
@@ -106,7 +109,7 @@ export default function ProjectModal({
               </label>
               <input
                 type="text"
-                className="form-control bg-secondary text-white border-secondary"
+                className="form-control"
                 id="projectName"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
@@ -119,7 +122,7 @@ export default function ProjectModal({
                 项目描述
               </label>
               <textarea
-                className="form-control bg-secondary text-white border-secondary"
+                className="form-control"
                 id="projectDescription"
                 rows={3}
                 value={description}
@@ -133,7 +136,7 @@ export default function ProjectModal({
               </label>
               <input
                 type="url"
-                className="form-control bg-secondary text-white border-secondary"
+                className="form-control"
                 id="projectUrl"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
@@ -147,7 +150,7 @@ export default function ProjectModal({
               </label>
               <input
                 type="text"
-                className="form-control bg-secondary text-white border-secondary"
+                className="form-control"
                 id="projectPath"
                 value={path}
                 onChange={(e) => setPath(e.target.value)}
@@ -158,7 +161,7 @@ export default function ProjectModal({
               </div>
             </div>
           </div>
-          <div className="modal-footer border-secondary">
+          <div className="modal-footer">
             <button
               type="button"
               className="btn btn-secondary"

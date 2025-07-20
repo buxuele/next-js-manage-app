@@ -155,13 +155,16 @@ export default function ProjectManager({
 
   return (
     <div
-      className="container-fluid py-4"
-      style={{ backgroundColor: "#1a1a1a", minHeight: "100vh" }}
+      className="container-fluid main-container py-4"
+      style={{ backgroundColor: "#fdfaf6", minHeight: "100vh" }}
     >
       {/* 顶部导航栏 */}
-      <nav className="navbar navbar-expand-lg navbar-dark mb-4">
+      <nav
+        className="navbar navbar-expand-lg navbar-light mb-4"
+        style={{ backgroundColor: "#fdfaf6" }}
+      >
         <div className="container-fluid">
-          <Link className="navbar-brand" href="/projects">
+          <Link className="navbar-brand text-dark" href="/">
             <i className="bi bi-grid-3x3-gap me-2"></i>
             我的项目中心
           </Link>
@@ -170,7 +173,7 @@ export default function ProjectManager({
             {session && (
               <div className="dropdown">
                 <button
-                  className="btn btn-outline-light dropdown-toggle d-flex align-items-center gap-2"
+                  className="btn btn-outline-dark dropdown-toggle d-flex align-items-center gap-2"
                   type="button"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
@@ -184,7 +187,7 @@ export default function ProjectManager({
                       height={24}
                     />
                   )}
-                  <span>
+                  <span className="text-dark">
                     {(session.user as any)?.username || session.user?.name}
                   </span>
                 </button>
@@ -229,14 +232,39 @@ export default function ProjectManager({
 
       {/* 主标题和添加按钮 */}
       <div className="d-flex justify-content-between align-items-center mb-5">
-        <h1 className="display-4 fw-bold text-white">start</h1>
-        <button
-          className="btn btn-primary rounded-circle shadow-lg"
-          style={{ width: "60px", height: "60px" }}
-          onClick={() => handleOpenModal(null)}
-        >
-          <i className="bi bi-plus-lg"></i>
-        </button>
+        <h1 className="display-4 fw-bold text-dark">start</h1>
+        <div className="d-flex gap-3">
+          <button
+            className="btn btn-primary btn-lg rounded-circle shadow-lg"
+            style={{ width: "60px", height: "60px" }}
+            onClick={() => handleOpenModal(null)}
+          >
+            <i className="bi bi-plus-lg"></i>
+          </button>
+          <div className="dropdown">
+            <button
+              className="btn btn-outline-primary btn-lg rounded-circle shadow-lg"
+              style={{ width: "60px", height: "60px" }}
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i className="bi bi-three-dots"></i>
+            </button>
+            <ul className="dropdown-menu dropdown-menu-end">
+              <li>
+                <button className="dropdown-item" onClick={handleImport}>
+                  <i className="bi bi-upload me-2"></i>导入数据
+                </button>
+              </li>
+              <li>
+                <button className="dropdown-item" onClick={handleExport}>
+                  <i className="bi bi-download me-2"></i>导出数据
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
       </div>
 
       {/* 项目网格 */}
@@ -245,9 +273,9 @@ export default function ProjectManager({
           <p>还没有项目，快添加你的第一个项目吧！</p>
         </div>
       ) : (
-        <div className="row g-4">
+        <div className="row g-5 row-cols-1 row-cols-md-2 row-cols-xl-4">
           {projects.map((project) => (
-            <div key={project.id} className="col-12 col-md-6 col-lg-4 col-xl-3">
+            <div key={project.id} className="col d-flex">
               <ProjectCard
                 project={project}
                 onDelete={handleDeleteProject}
@@ -260,7 +288,7 @@ export default function ProjectManager({
 
       {/* 底部探索发现区域 */}
       <div className="mt-5 pt-5">
-        <h2 className="h4 text-white mb-3">探索发现</h2>
+        <h2 className="h4 text-dark mb-3">探索发现</h2>
         <div className="text-muted">
           <p>更多功能正在开发中...</p>
         </div>
