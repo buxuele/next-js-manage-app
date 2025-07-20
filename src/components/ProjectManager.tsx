@@ -254,10 +254,39 @@ export default function ProjectManager() {
   if (loading) {
     return (
       <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ minHeight: "400px" }}
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          padding: "20px",
+        }}
       >
-        <LoadingSpinner />
+        {/* 头部工具栏 */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="mb-1 text-white">端口管理</h2>
+            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+          </div>
+        </div>
+
+        {/* 加载状态内容 */}
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: "400px" }}
+        >
+          <div
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+              padding: "40px",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              textAlign: "center",
+            }}
+          >
+            <LoadingSpinner />
+            <p className="text-white mt-3 mb-0">正在加载项目...</p>
+          </div>
+        </div>
       </div>
     );
   }
@@ -265,13 +294,65 @@ export default function ProjectManager() {
   // 错误状态
   if (error) {
     return (
-      <div className="alert alert-danger" role="alert">
-        <h4 className="alert-heading">加载失败</h4>
-        <p>{error}</p>
-        <hr />
-        <button className="btn btn-outline-danger" onClick={fetchProjects}>
-          重试
-        </button>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          padding: "20px",
+        }}
+      >
+        {/* 头部工具栏 */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="mb-1 text-white">端口管理</h2>
+            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+          </div>
+        </div>
+
+        {/* 错误状态内容 */}
+        <div
+          className="d-flex justify-content-center align-items-center"
+          style={{ minHeight: "400px" }}
+        >
+          <div
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+              padding: "40px",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              textAlign: "center",
+              maxWidth: "500px",
+            }}
+          >
+            <div className="mb-4">
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  background: "rgba(220, 53, 69, 0.2)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto",
+                  border: "2px solid rgba(220, 53, 69, 0.3)",
+                }}
+              >
+                <i
+                  className="bi bi-exclamation-triangle"
+                  style={{ fontSize: "32px", color: "#dc3545" }}
+                ></i>
+              </div>
+            </div>
+            <h4 className="text-white mb-3">加载失败</h4>
+            <p className="text-white-50 mb-4">{error}</p>
+            <button className="btn btn-light" onClick={fetchProjects}>
+              <i className="bi bi-arrow-clockwise me-2"></i>
+              重试
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -279,69 +360,121 @@ export default function ProjectManager() {
   // 空状态
   if (projects.length === 0) {
     return (
-      <div className="text-center py-5">
-        <div className="mb-4">
-          <svg
-            width="64"
-            height="64"
-            fill="currentColor"
-            className="text-muted"
-            viewBox="0 0 16 16"
-          >
-            <path d="M1.5 0A1.5 1.5 0 0 0 0 1.5v13A1.5 1.5 0 0 0 1.5 16h13a1.5 1.5 0 0 0 1.5-1.5v-13A1.5 1.5 0 0 0 14.5 0h-13zM1 1.5a.5.5 0 0 1 .5-.5h13a.5.5 0 0 1 .5.5v13a.5.5 0 0 1-.5.5h-13a.5.5 0 0 1-.5-.5v-13z" />
-            <path d="M8 5.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5zM4.5 8a3.5 3.5 0 1 1 7 0 3.5 3.5 0 0 1-7 0z" />
-          </svg>
+      <div
+        style={{
+          minHeight: "100vh",
+          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+          padding: "20px",
+        }}
+      >
+        {/* 头部工具栏 */}
+        <div className="d-flex justify-content-between align-items-center mb-4">
+          <div>
+            <h2 className="mb-1 text-white">端口管理</h2>
+            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+          </div>
+          <div className="btn-group" role="group">
+            <button
+              className="btn btn-light"
+              onClick={() => setShowAddModal(true)}
+            >
+              <i className="bi bi-plus-circle me-2"></i>
+              添加项目
+            </button>
+          </div>
         </div>
-        <h4 className="text-muted">暂无项目</h4>
-        <p className="text-muted">
-          还没有添加任何开发项目。点击上方的&ldquo;添加项目&rdquo;按钮开始管理您的端口！
-        </p>
+
+        {/* 空状态内容 */}
+        <div className="text-center py-5">
+          <div
+            style={{
+              background: "rgba(255,255,255,0.1)",
+              borderRadius: "20px",
+              padding: "60px 40px",
+              backdropFilter: "blur(10px)",
+              border: "1px solid rgba(255,255,255,0.2)",
+              maxWidth: "500px",
+              margin: "0 auto",
+            }}
+          >
+            <div className="mb-4">
+              <div
+                style={{
+                  width: "80px",
+                  height: "80px",
+                  background: "rgba(255,255,255,0.2)",
+                  borderRadius: "50%",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  margin: "0 auto",
+                  border: "2px solid rgba(255,255,255,0.3)",
+                }}
+              >
+                <i
+                  className="bi bi-hdd-network"
+                  style={{ fontSize: "32px", color: "white" }}
+                ></i>
+              </div>
+            </div>
+            <h4 className="text-white mb-3">暂无项目</h4>
+            <p className="text-white-50 mb-4">
+              还没有添加任何开发项目。点击上方的"添加项目"按钮开始管理您的端口！
+            </p>
+            <button
+              className="btn btn-light btn-lg"
+              onClick={() => setShowAddModal(true)}
+            >
+              <i className="bi bi-plus-circle me-2"></i>
+              添加第一个项目
+            </button>
+          </div>
+        </div>
+
+        {/* 添加项目模态框 */}
+        <AddProjectModal
+          isOpen={showAddModal}
+          onClose={() => setShowAddModal(false)}
+          onProjectAdded={handleProjectAdded}
+        />
+
+        {/* Toast 通知容器 */}
+        <ToastContainer toasts={toasts} onClose={removeToast} />
       </div>
     );
   }
 
   // 项目列表
   return (
-    <>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+        padding: "20px",
+      }}
+    >
       {/* 头部工具栏 */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="mb-1">端口管理</h2>
-          <p className="text-muted mb-0">管理您的开发端口和项目</p>
+          <h2 className="mb-1 text-white">端口管理</h2>
+          <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
         </div>
         <div className="btn-group" role="group">
           <button
-            className="btn btn-primary"
+            className="btn btn-light"
             onClick={() => setShowAddModal(true)}
           >
-            <svg
-              width="16"
-              height="16"
-              fill="currentColor"
-              className="me-2"
-              viewBox="0 0 16 16"
-            >
-              <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z" />
-            </svg>
+            <i className="bi bi-plus-circle me-2"></i>
             添加项目
           </button>
           <div className="btn-group" role="group">
             <button
               type="button"
-              className="btn btn-outline-primary dropdown-toggle"
+              className="btn btn-outline-light dropdown-toggle"
               data-bs-toggle="dropdown"
               aria-expanded="false"
             >
-              <svg
-                width="16"
-                height="16"
-                fill="currentColor"
-                className="me-1"
-                viewBox="0 0 16 16"
-              >
-                <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
-              </svg>
+              <i className="bi bi-three-dots me-1"></i>
               更多
             </button>
             <ul className="dropdown-menu">
@@ -351,31 +484,13 @@ export default function ProjectManager() {
                   onClick={handleExportProjects}
                   disabled={projects.length === 0}
                 >
-                  <svg
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    className="me-2"
-                    viewBox="0 0 16 16"
-                  >
-                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z" />
-                  </svg>
+                  <i className="bi bi-download me-2"></i>
                   导出配置
                 </button>
               </li>
               <li>
                 <label className="dropdown-item" style={{ cursor: "pointer" }}>
-                  <svg
-                    width="16"
-                    height="16"
-                    fill="currentColor"
-                    className="me-2"
-                    viewBox="0 0 16 16"
-                  >
-                    <path d="M.5 9.9a.5.5 0 0 1 .5.5v2.5a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-2.5a.5.5 0 0 1 1 0v2.5a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2v-2.5a.5.5 0 0 1 .5-.5z" />
-                    <path d="M7.646 1.146a.5.5 0 0 1 .708 0l3 3a.5.5 0 0 1-.708.708L8.5 2.707V11.5a.5.5 0 0 1-1 0V2.707L5.354 4.854a.5.5 0 1 1-.708-.708l3-3z" />
-                  </svg>
+                  <i className="bi bi-upload me-2"></i>
                   导入配置
                   <input
                     type="file"
@@ -390,10 +505,10 @@ export default function ProjectManager() {
         </div>
       </div>
 
-      {/* 项目网格 */}
-      <div className="row g-4">
+      {/* 项目网格 - 4列布局 */}
+      <div className="row g-3">
         {projects.map((project) => (
-          <div key={project.id} className="col-12 col-md-6 col-lg-4">
+          <div key={project.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
             <ProjectCard
               project={project}
               onStart={handleStartProject}
@@ -415,6 +530,6 @@ export default function ProjectManager() {
 
       {/* Toast 通知容器 */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
-    </>
+    </div>
   );
 }

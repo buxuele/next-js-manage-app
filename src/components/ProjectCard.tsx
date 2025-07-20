@@ -99,90 +99,124 @@ export default function ProjectCard({
     }
   };
 
+  // 生成项目名称的首字母作为占位符
+  const getProjectInitial = (name: string) => {
+    return name.charAt(0).toUpperCase();
+  };
+
   const isRunning = status?.isRunning || false;
   const projectUrl = `http://localhost:${project.port || 3000}`;
 
   return (
-    <div className="card h-100">
-      <div className="card-body d-flex flex-column">
-        {/* 项目头部信息 */}
-        <div className="d-flex align-items-start mb-3">
-          {project.icon && (
-            <Image
-              src={project.icon}
-              alt={`${project.name} icon`}
-              width={48}
-              height={48}
-              className="me-3"
-              style={{ objectFit: "cover" }}
-            />
-          )}
-          <div className="flex-grow-1">
-            <h5 className="card-title mb-1">{project.name}</h5>
-            <p className="card-text text-muted small mb-2">
-              {project.description}
-            </p>
+    <div
+      style={{
+        background: "linear-gradient(145deg, #ffecd2 0%, #fcb69f 100%)",
+        border: "2px solid #e67e22",
+        borderRadius: "12px",
+        boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+        transition: "all 0.3s ease",
+        height: "100%",
+      }}
+      className="project-card"
+      onMouseEnter={(e) => {
+        e.currentTarget.style.transform = "translateY(-2px)";
+        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.15)";
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.transform = "translateY(0)";
+        e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
+      }}
+    >
+      <div className="p-3 d-flex flex-column h-100">
+        {/* 项目图标和状态 */}
+        <div className="d-flex align-items-center mb-3">
+          <div className="me-3">
+            {project.icon ? (
+              <Image
+                src={project.icon}
+                alt={`${project.name} icon`}
+                width={48}
+                height={48}
+                className="rounded"
+                style={{ objectFit: "cover" }}
+              />
+            ) : (
+              <div
+                style={{
+                  width: "48px",
+                  height: "48px",
+                  background:
+                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                  borderRadius: "8px",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  color: "white",
+                  fontSize: "20px",
+                  fontWeight: "bold",
+                  border: "2px solid #fff",
+                }}
+              >
+                {getProjectInitial(project.name)}
+              </div>
+            )}
           </div>
-          {/* 运行状态指示器 */}
-          <div className="ms-2">
-            <span
-              className={`badge ${isRunning ? "bg-success" : "bg-secondary"}`}
-            >
-              {isRunning ? "运行中" : "已停止"}
-            </span>
+          <div className="flex-grow-1">
+            <div className="d-flex justify-content-between align-items-start">
+              <h6 className="mb-1 fw-bold text-dark">{project.name}</h6>
+              <span
+                className={`badge ${isRunning ? "bg-success" : "bg-secondary"}`}
+                style={{ fontSize: "10px" }}
+              >
+                {isRunning ? "运行中" : "已停止"}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* 项目详细信息 */}
+        {/* 项目描述 */}
         <div className="mb-3">
-          <small className="text-muted d-block">
-            <strong>路径:</strong> {project.path}
-          </small>
-          <small className="text-muted d-block">
-            <strong>端口:</strong> {project.port || 3000}
-          </small>
-          {status?.startTime && (
-            <small className="text-muted d-block">
-              <strong>启动时间:</strong>{" "}
-              {new Date(status.startTime).toLocaleString()}
-            </small>
-          )}
+          <p
+            className="text-muted small mb-2"
+            style={{ fontSize: "12px", lineHeight: "1.4" }}
+          >
+            {project.description || "暂无描述"}
+          </p>
+          <div className="small text-muted">
+            <div style={{ fontSize: "11px" }}>
+              <strong>路径:</strong>{" "}
+              {project.path.length > 30
+                ? `...${project.path.slice(-30)}`
+                : project.path}
+            </div>
+            <div style={{ fontSize: "11px" }}>
+              <strong>端口:</strong> {project.port || 3000}
+            </div>
+          </div>
         </div>
 
         {/* 操作按钮 */}
         <div className="mt-auto">
-          <div className="row g-2">
+          <div className="row g-1 mb-2">
             {/* 启动/停止按钮 */}
             <div className="col-6">
               {isRunning ? (
                 <button
-                  className="btn btn-outline-danger btn-sm w-100"
+                  className="btn btn-danger btn-sm w-100"
                   onClick={handleStop}
                   disabled={loading.stop}
+                  style={{ fontSize: "11px", padding: "4px 8px" }}
                 >
-                  {loading.stop ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-1"></span>
-                      停止中...
-                    </>
-                  ) : (
-                    "停止"
-                  )}
+                  {loading.stop ? "停止中..." : "停止"}
                 </button>
               ) : (
                 <button
-                  className="btn btn-outline-success btn-sm w-100"
+                  className="btn btn-success btn-sm w-100"
                   onClick={handleStart}
                   disabled={loading.start}
+                  style={{ fontSize: "11px", padding: "4px 8px" }}
                 >
-                  {loading.start ? (
-                    <>
-                      <span className="spinner-border spinner-border-sm me-1"></span>
-                      启动中...
-                    </>
-                  ) : (
-                    "启动"
-                  )}
+                  {loading.start ? "启动中..." : "启动"}
                 </button>
               )}
             </div>
@@ -190,49 +224,40 @@ export default function ProjectCard({
             {/* 访问网址按钮 */}
             <div className="col-6">
               <button
-                className="btn btn-outline-primary btn-sm w-100"
+                className="btn btn-primary btn-sm w-100"
                 onClick={() => onOpenUrl(projectUrl)}
                 disabled={!isRunning}
                 title={isRunning ? "在浏览器中打开" : "项目未运行"}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
               >
                 访问网址
               </button>
             </div>
+          </div>
 
+          <div className="row g-1">
             {/* 打开目录按钮 */}
             <div className="col-6">
               <button
-                className="btn btn-outline-info btn-sm w-100"
+                className="btn btn-info btn-sm w-100"
                 onClick={handleOpenDirectory}
                 disabled={loading.openDir}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
               >
-                {loading.openDir ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-1"></span>
-                    打开中...
-                  </>
-                ) : (
-                  "打开目录"
-                )}
+                {loading.openDir ? "打开中..." : "打开目录"}
               </button>
             </div>
 
             {/* 删除按钮 */}
             <div className="col-6">
               <button
-                className="btn btn-outline-danger btn-sm w-100"
+                className="btn btn-warning btn-sm w-100"
                 onClick={handleDelete}
                 disabled={loading.delete || isRunning}
                 title={isRunning ? "请先停止项目" : "删除项目"}
+                style={{ fontSize: "11px", padding: "4px 8px" }}
               >
-                {loading.delete ? (
-                  <>
-                    <span className="spinner-border spinner-border-sm me-1"></span>
-                    删除中...
-                  </>
-                ) : (
-                  "删除"
-                )}
+                {loading.delete ? "删除中..." : "删除"}
               </button>
             </div>
           </div>
