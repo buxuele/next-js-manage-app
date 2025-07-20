@@ -92,9 +92,14 @@ export default function ProjectManager({
 
         const link = document.createElement("a");
         link.href = url;
-        link.download = `projects-export-${
-          new Date().toISOString().split("T")[0]
-        }.json`;
+        // 生成与Flask版本一致的文件名格式：projects_export_20250720_031028.json
+        const now = new Date();
+        const timestamp = now
+          .toISOString()
+          .replace(/[-:]/g, "")
+          .replace("T", "_")
+          .split(".")[0];
+        link.download = `projects_export_${timestamp}.json`;
         document.body.appendChild(link);
         link.click();
         document.body.removeChild(link);
@@ -122,12 +127,37 @@ export default function ProjectManager({
       const text = await file.text();
       const importData = JSON.parse(text);
 
+      // 处理不同的导入数据格式
+      let projects = [];
+      if (importData.projects && Array.isArray(importData.projects)) {
+        // Flask导出格式：{ projects: [...], total_projects: 5, export_time: "..." }
+        projects = importData.projects;
+      } else if (Array.isArray(importData)) {
+        // 直接的项目数组格式
+        projects = importData;
+      } else {
+        throw new Error("无效的数据格式");
+      }
+
+      if (projects.length === 0) {
+        alert("导入文件中没有找到项目数据");
+        return;
+      }
+
+      // 询问用户是否替换现有数据
+      const replaceExisting = confirm(
+        `即将导入 ${projects.length} 个项目。\n\n点击"确定"替换所有现有项目\n点击"取消"仅添加新项目（跳过重复项目）`
+      );
+
       const response = await fetch("/api/projects/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(importData),
+        body: JSON.stringify({
+          projects: projects,
+          replace_existing: replaceExisting,
+        }),
       });
 
       const result = await response.json();
