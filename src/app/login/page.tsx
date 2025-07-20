@@ -37,10 +37,10 @@ export default function LoginPage() {
                 <div className="text-center mb-4">
                   <h1 className="h3 text-white mb-3">
                     <i className="bi bi-grid-3x3-gap me-2"></i>
-                    我的项目中心
+                    我的项目
                   </h1>
                   <p className="text-muted">
-                    使用 GitHub 账号登录来管理你的开发项目
+                    使用 GitHub 账号登录
                   </p>
                 </div>
 
@@ -68,11 +68,7 @@ export default function LoginPage() {
                   </button>
                 </div>
 
-                <div className="text-center mt-4">
-                  <small className="text-muted">
-                    登录即表示你同意我们的服务条款
-                  </small>
-                </div>
+               
               </div>
             </div>
           </div>
