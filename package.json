@@ -1,7 +1,8 @@
 {
-  "name": "next-js-manage-app",
+  "name": "next-js-task-manager",
   "version": "0.1.0",
   "private": true,
+  "description": "一个基于 Next.js 的任务管理系统",
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -14,7 +15,7 @@
     "check:deployment": "node scripts/check-deployment.js",
     "db:setup": "node scripts/setup-database.js",
     "setup-database": "node scripts/setup-database.js",
-    "test:projects": "node scripts/run-tests.js"
+    "test:tasks": "node scripts/run-tests.js"
   },
   "dependencies": {
     "@neondatabase/serverless": "^0.9.5",

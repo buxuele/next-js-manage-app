@@ -1,8 +1,2 @@
-// 项目相关类型
-export type {
-  ProjectConfig,
-  ProjectStatus,
-  ApiResponse,
-  ProjectAction,
-  ProjectFormData,
-} from "./project";
+// 任务管理系统类型定义
+// 主要类型定义在 @/lib/data 中
