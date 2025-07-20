@@ -200,13 +200,20 @@ export default function ProjectManager({
           </Link>
 
           <div className="d-flex align-items-center gap-3">
-            {session && (
+            {/* 临时调试信息 */}
+            <small className="text-muted">
+              Session: {session ? "已登录" : "未登录"} | 用户:{" "}
+              {session?.user?.name || session?.user?.email || "无"}
+            </small>
+
+            {session ? (
               <div className="dropdown">
                 <button
                   className="btn btn-outline-dark dropdown-toggle d-flex align-items-center gap-2"
                   type="button"
                   data-bs-toggle="dropdown"
                   aria-expanded="false"
+                  id="userDropdown"
                 >
                   {session.user?.image && (
                     <Image
@@ -218,10 +225,15 @@ export default function ProjectManager({
                     />
                   )}
                   <span className="text-dark">
-                    {(session.user as any)?.username || session.user?.name}
+                    {(session.user as any)?.username ||
+                      session.user?.name ||
+                      "用户"}
                   </span>
                 </button>
-                <ul className="dropdown-menu dropdown-menu-end">
+                <ul
+                  className="dropdown-menu dropdown-menu-end"
+                  aria-labelledby="userDropdown"
+                >
                   <li>
                     <button className="dropdown-item" onClick={handleExport}>
                       <i className="bi bi-download me-2"></i>
@@ -255,6 +267,8 @@ export default function ProjectManager({
                   style={{ display: "none" }}
                 />
               </div>
+            ) : (
+              <div className="text-muted">未登录</div>
             )}
           </div>
         </div>
