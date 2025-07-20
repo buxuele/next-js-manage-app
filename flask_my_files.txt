@@ -1,0 +1,3430 @@
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\app.py
+内容:
+import json
+import os
+import subprocess
+import sys
+import requests
+import sqlite3
+from flask import Flask, render_template, jsonify, request, abort, send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+from datetime import datetime
+
+# cmd /c "c:\Users\Administrator\Work\flask_port_app\port_venv\Scripts\activate.bat"
+
+
+app = Flask(__name__)
+PROJECTS_FILE = 'projects.json'
+DATABASE_FILE = 'projects.db'
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# 确保上传目录存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- SQLite 数据库操作 ---
+
+def init_database():
+    """初始化SQLite数据库"""
+    print("正在初始化SQLite数据库...")
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    # 创建projects表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            url TEXT NOT NULL,
+            path TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("SQLite数据库初始化完成")
+
+def migrate_json_to_sqlite():
+    """将JSON数据迁移到SQLite数据库"""
+    if not os.path.exists(PROJECTS_FILE):
+        print("没有找到JSON文件，跳过数据迁移")
+        return
+        
+    print("正在从JSON迁移数据到SQLite...")
+    
+    # 读取JSON数据
+    json_projects = get_projects_data_from_json()
+    if not json_projects:
+        print("JSON文件为空，跳过数据迁移")
+        return
+    
+    # 写入SQLite数据库
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    for project in json_projects:
+        cursor.execute('''
+            INSERT OR REPLACE INTO projects (id, name, description, url, path, image)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            project.get('id'),
+            project.get('name', ''),
+            project.get('description', ''),
+            project.get('url', ''),
+            project.get('path', ''),
+            project.get('image', '')
+        ))
+    
+    conn.commit()
+    conn.close()
+    
+    # 备份JSON文件
+    backup_file = f"{PROJECTS_FILE}.backup"
+    os.rename(PROJECTS_FILE, backup_file)
+    print(f"数据迁移完成，JSON文件已备份为: {backup_file}")
+
+def get_db_connection():
+    """获取数据库连接"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row  # 使结果可以像字典一样访问
+    return conn
+
+def get_projects_data_sqlite():
+    """从SQLite数据库获取项目数据"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # 转换为字典列表
+    projects = []
+    for row in rows:
+        projects.append({
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        })
+    
+    return projects
+
+def add_project_sqlite(name, description, url, path):
+    """向SQLite数据库添加项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects (name, description, url, path)
+        VALUES (?, ?, ?, ?)
+    ''', (name, description, url, path))
+    
+    project_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    print(f"SQLite: 添加项目成功，ID: {project_id}")
+    return project_id
+
+def update_project_sqlite(project_id, name, description, url, path):
+    """更新SQLite数据库中的项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET name = ?, description = ?, url = ?, path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (name, description, url, path, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def delete_project_sqlite(project_id):
+    """从SQLite数据库删除项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 删除项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def update_project_image_sqlite(project_id, image_url):
+    """更新SQLite数据库中项目的图片"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET image = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (image_url, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id} 图片，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def get_project_by_id_sqlite(project_id):
+    """从SQLite数据库获取单个项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        }
+    return None
+
+# --- 数据处理（兼容JSON和SQLite）---
+
+def get_projects_data_from_json():
+    """从JSON文件获取项目数据（用于迁移）"""
+    if not os.path.exists(PROJECTS_FILE):
+        return []
+    with open(PROJECTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if isinstance(data, list):
+            data.sort(key=lambda p: p.get('id', 0))
+            return data
+        return []
+
+def get_projects_data():
+    """获取项目数据（优先使用SQLite）"""
+    if os.path.exists(DATABASE_FILE):
+        print("使用SQLite数据库获取项目数据")
+        return get_projects_data_sqlite()
+    else:
+        print("使用JSON文件获取项目数据")
+        return get_projects_data_from_json()
+
+def save_projects_data(projects):
+    """保存项目数据（兼容性函数，实际不再使用）"""
+    print("警告: save_projects_data 函数已废弃，请使用SQLite操作函数")
+    pass
+
+# --- 核心路由 ---
+
+@app.route('/')
+def index():
+    """
+    主页路由。
+    【关键修复】：直接将 Python 列表传递给模板，而不是JSON字符串。
+    Jinja的 `tojson` 过滤器会处理好剩下的事情。
+    """
+    projects = get_projects_data()
+    return render_template('index.html', projects=projects)
+
+# --- API 路由 ---
+
+@app.route('/api/projects', methods=['POST'])
+def add_project():
+    """添加一个新项目。"""
+    data = request.get_json()
+    if not data or not data.get('name') or not data.get('url'):
+        abort(400, description="缺少项目名称或URL")
+
+    print(f"正在添加新项目: {data.get('name')}")
+    
+    # 使用SQLite添加项目
+    project_id = add_project_sqlite(
+        data['name'],
+        data.get('description', ''),
+        data['url'],
+        data.get('path', '')
+    )
+    
+    # 获取新创建的项目
+    new_project = get_project_by_id_sqlite(project_id)
+    return jsonify(new_project), 201
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    """更新一个已有的项目。"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="缺少更新数据")
+
+    print(f"正在更新项目 {project_id}")
+    
+    # 使用SQLite更新项目
+    success = update_project_sqlite(
+        project_id,
+        data.get('name', ''),
+        data.get('description', ''),
+        data.get('url', ''),
+        data.get('path', '')
+    )
+    
+    if not success:
+        abort(404, description="未找到项目")
+    
+    # 获取更新后的项目
+    updated_project = get_project_by_id_sqlite(project_id)
+    return jsonify(updated_project)
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """删除一个项目。"""
+    print(f"正在删除项目 {project_id}")
+    
+    # 使用SQLite删除项目
+    success = delete_project_sqlite(project_id)
+    if not success:
+        abort(404, description="未找到项目")
+    
+    return jsonify({"success": True, "message": "项目已删除"})
+
+@app.route('/api/open-folder/<int:project_id>')
+def open_folder(project_id):
+    """在本地文件浏览器中打开项目文件夹。"""
+    projects = get_projects_data()
+    project = next((p for p in projects if p.get('id') == project_id), None)
+    if not project or not project.get('path') or not os.path.isdir(project.get('path')):
+        return jsonify({"success": False, "message": "路径无效或不存在"}), 404
+
+    path = project['path']
+    if sys.platform == "win32":
+        os.startfile(path)
+    elif sys.platform == "darwin": # macOS
+        subprocess.run(["open", path])
+    else: # Linux
+        subprocess.run(["xdg-open", path])
+    return jsonify({"success": True})
+
+@app.route('/api/upload-image/<int:project_id>', methods=['POST'])
+def upload_image(project_id):
+    """为项目上传图片"""
+    print(f"正在为项目 {project_id} 上传图片")
+    
+    if 'image' not in request.files:
+        print("没有找到图片文件")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        print("文件名为空")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    if file and allowed_file(file.filename):
+        # 生成唯一文件名
+        filename = secure_filename(file.filename)
+        unique_filename = f"{project_id}_{uuid.uuid4().hex[:8]}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        print(f"保存图片到: {filepath}")
+        file.save(filepath)
+        
+        # 获取项目信息
+        project = get_project_by_id_sqlite(project_id)
+        if not project:
+            print(f"项目 {project_id} 不存在")
+            return jsonify({"success": False, "message": "项目不存在"}), 404
+            
+        # 删除旧图片
+        if project.get('image'):
+            old_path = project['image'].replace('/static/', 'static/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                print(f"删除旧图片: {old_path}")
+        
+        # 使用SQLite更新项目图片
+        image_url = f"/static/uploads/{unique_filename}"
+        success = update_project_image_sqlite(project_id, image_url)
+        
+        if success:
+            print(f"项目 {project_id} 图片已更新")
+            return jsonify({"success": True, "image_url": image_url})
+        else:
+            return jsonify({"success": False, "message": "更新图片失败"}), 500
+    
+    print("文件格式不支持")
+    return jsonify({"success": False, "message": "文件格式不支持"}), 400
+
+@app.route('/api/export', methods=['GET'])
+def export_projects():
+    """导出项目数据为JSON格式"""
+    print("正在导出项目数据...")
+    
+    try:
+        projects = get_projects_data()
+        
+        # 生成导出文件名（包含时间戳）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"projects_export_{timestamp}.json"
+        
+        # 创建响应
+        response_data = {
+            "export_time": datetime.now().isoformat(),
+            "total_projects": len(projects),
+            "projects": projects
+        }
+        
+        print(f"导出完成，共 {len(projects)} 个项目")
+        
+        # 返回JSON数据，让前端处理下载
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "data": response_data
+        })
+        
+    except Exception as e:
+        print(f"导出失败: {str(e)}")
+        return jsonify({"success": False, "message": f"导出失败: {str(e)}"}), 500
+
+@app.route('/api/import', methods=['POST'])
+def import_projects():
+    """导入项目数据"""
+    print("正在导入项目数据...")
+    
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "没有接收到数据"}), 400
+        
+        projects_data = data.get('projects', [])
+        replace_existing = data.get('replace_existing', False)
+        
+        if not projects_data:
+            return jsonify({"success": False, "message": "导入数据为空"}), 400
+        
+        print(f"准备导入 {len(projects_data)} 个项目，替换现有数据: {replace_existing}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 如果选择替换现有数据，先清空表
+        if replace_existing:
+            print("清空现有项目数据...")
+            cursor.execute('DELETE FROM projects')
+            # 重置自增ID
+            cursor.execute('DELETE FROM sqlite_sequence WHERE name="projects"')
+        
+        # 导入新数据
+        imported_count = 0
+        for project in projects_data:
+            try:
+                # 如果不替换现有数据，检查是否已存在相同名称的项目
+                if not replace_existing:
+                    cursor.execute('SELECT COUNT(*) FROM projects WHERE name = ?', (project.get('name', ''),))
+                    if cursor.fetchone()[0] > 0:
+                        print(f"跳过重复项目: {project.get('name', '')}")
+                        continue
+                
+                # 插入项目数据
+                cursor.execute('''
+                    INSERT INTO projects (name, description, url, path, image)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    project.get('name', ''),
+                    project.get('description', ''),
+                    project.get('url', ''),
+                    project.get('path', ''),
+                    project.get('image', '')
+                ))
+                imported_count += 1
+                print(f"导入项目: {project.get('name', '')}")
+                
+            except Exception as e:
+                print(f"导入项目失败 {project.get('name', '')}: {str(e)}")
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"导入完成，成功导入 {imported_count} 个项目")
+        
+        return jsonify({
+            "success": True,
+            "message": f"成功导入 {imported_count} 个项目",
+            "imported_count": imported_count,
+            "total_count": len(projects_data)
+        })
+        
+    except Exception as e:
+        print(f"导入失败: {str(e)}")
+        return jsonify({"success": False, "message": f"导入失败: {str(e)}"}), 500
+
+if __name__ == '__main__':
+    # 初始化SQLite数据库
+    init_database()
+    
+    # 如果存在JSON文件，进行数据迁移
+    if os.path.exists(PROJECTS_FILE):
+        migrate_json_to_sqlite()
+    
+    print("数据库准备完成，启动Flask应用...")
+    
+    # 临时调试，端口是 9936
+    # 开机运行，端口是 9926
+    app.run(debug=True, host='0.0.0.0', port=9936)
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\app.pyw
+内容:
+import json
+import os
+import subprocess
+import sys
+import requests
+import sqlite3
+from flask import Flask, render_template, jsonify, request, abort, send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+from datetime import datetime
+
+# cmd /c "c:\Users\Administrator\Work\flask_port_app\port_venv\Scripts\activate.bat"
+
+
+app = Flask(__name__)
+PROJECTS_FILE = 'projects.json'
+DATABASE_FILE = 'projects.db'
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# 确保上传目录存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- SQLite 数据库操作 ---
+
+def init_database():
+    """初始化SQLite数据库"""
+    print("正在初始化SQLite数据库...")
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    # 创建projects表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            url TEXT NOT NULL,
+            path TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("SQLite数据库初始化完成")
+
+def migrate_json_to_sqlite():
+    """将JSON数据迁移到SQLite数据库"""
+    if not os.path.exists(PROJECTS_FILE):
+        print("没有找到JSON文件，跳过数据迁移")
+        return
+        
+    print("正在从JSON迁移数据到SQLite...")
+    
+    # 读取JSON数据
+    json_projects = get_projects_data_from_json()
+    if not json_projects:
+        print("JSON文件为空，跳过数据迁移")
+        return
+    
+    # 写入SQLite数据库
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    for project in json_projects:
+        cursor.execute('''
+            INSERT OR REPLACE INTO projects (id, name, description, url, path, image)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            project.get('id'),
+            project.get('name', ''),
+            project.get('description', ''),
+            project.get('url', ''),
+            project.get('path', ''),
+            project.get('image', '')
+        ))
+    
+    conn.commit()
+    conn.close()
+    
+    # 备份JSON文件
+    backup_file = f"{PROJECTS_FILE}.backup"
+    os.rename(PROJECTS_FILE, backup_file)
+    print(f"数据迁移完成，JSON文件已备份为: {backup_file}")
+
+def get_db_connection():
+    """获取数据库连接"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row  # 使结果可以像字典一样访问
+    return conn
+
+def get_projects_data_sqlite():
+    """从SQLite数据库获取项目数据"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # 转换为字典列表
+    projects = []
+    for row in rows:
+        projects.append({
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        })
+    
+    return projects
+
+def add_project_sqlite(name, description, url, path):
+    """向SQLite数据库添加项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects (name, description, url, path)
+        VALUES (?, ?, ?, ?)
+    ''', (name, description, url, path))
+    
+    project_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    print(f"SQLite: 添加项目成功，ID: {project_id}")
+    return project_id
+
+def update_project_sqlite(project_id, name, description, url, path):
+    """更新SQLite数据库中的项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET name = ?, description = ?, url = ?, path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (name, description, url, path, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def delete_project_sqlite(project_id):
+    """从SQLite数据库删除项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 删除项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def update_project_image_sqlite(project_id, image_url):
+    """更新SQLite数据库中项目的图片"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET image = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (image_url, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id} 图片，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def get_project_by_id_sqlite(project_id):
+    """从SQLite数据库获取单个项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        }
+    return None
+
+# --- 数据处理（兼容JSON和SQLite）---
+
+def get_projects_data_from_json():
+    """从JSON文件获取项目数据（用于迁移）"""
+    if not os.path.exists(PROJECTS_FILE):
+        return []
+    with open(PROJECTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if isinstance(data, list):
+            data.sort(key=lambda p: p.get('id', 0))
+            return data
+        return []
+
+def get_projects_data():
+    """获取项目数据（优先使用SQLite）"""
+    if os.path.exists(DATABASE_FILE):
+        print("使用SQLite数据库获取项目数据")
+        return get_projects_data_sqlite()
+    else:
+        print("使用JSON文件获取项目数据")
+        return get_projects_data_from_json()
+
+def save_projects_data(projects):
+    """保存项目数据（兼容性函数，实际不再使用）"""
+    print("警告: save_projects_data 函数已废弃，请使用SQLite操作函数")
+    pass
+
+# --- 核心路由 ---
+
+@app.route('/')
+def index():
+    """
+    主页路由。
+    【关键修复】：直接将 Python 列表传递给模板，而不是JSON字符串。
+    Jinja的 `tojson` 过滤器会处理好剩下的事情。
+    """
+    projects = get_projects_data()
+    return render_template('index.html', projects=projects)
+
+# --- API 路由 ---
+
+@app.route('/api/projects', methods=['POST'])
+def add_project():
+    """添加一个新项目。"""
+    data = request.get_json()
+    if not data or not data.get('name') or not data.get('url'):
+        abort(400, description="缺少项目名称或URL")
+
+    print(f"正在添加新项目: {data.get('name')}")
+    
+    # 使用SQLite添加项目
+    project_id = add_project_sqlite(
+        data['name'],
+        data.get('description', ''),
+        data['url'],
+        data.get('path', '')
+    )
+    
+    # 获取新创建的项目
+    new_project = get_project_by_id_sqlite(project_id)
+    return jsonify(new_project), 201
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    """更新一个已有的项目。"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="缺少更新数据")
+
+    print(f"正在更新项目 {project_id}")
+    
+    # 使用SQLite更新项目
+    success = update_project_sqlite(
+        project_id,
+        data.get('name', ''),
+        data.get('description', ''),
+        data.get('url', ''),
+        data.get('path', '')
+    )
+    
+    if not success:
+        abort(404, description="未找到项目")
+    
+    # 获取更新后的项目
+    updated_project = get_project_by_id_sqlite(project_id)
+    return jsonify(updated_project)
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """删除一个项目。"""
+    print(f"正在删除项目 {project_id}")
+    
+    # 使用SQLite删除项目
+    success = delete_project_sqlite(project_id)
+    if not success:
+        abort(404, description="未找到项目")
+    
+    return jsonify({"success": True, "message": "项目已删除"})
+
+@app.route('/api/open-folder/<int:project_id>')
+def open_folder(project_id):
+    """在本地文件浏览器中打开项目文件夹。"""
+    projects = get_projects_data()
+    project = next((p for p in projects if p.get('id') == project_id), None)
+    if not project or not project.get('path') or not os.path.isdir(project.get('path')):
+        return jsonify({"success": False, "message": "路径无效或不存在"}), 404
+
+    path = project['path']
+    if sys.platform == "win32":
+        os.startfile(path)
+    elif sys.platform == "darwin": # macOS
+        subprocess.run(["open", path])
+    else: # Linux
+        subprocess.run(["xdg-open", path])
+    return jsonify({"success": True})
+
+@app.route('/api/upload-image/<int:project_id>', methods=['POST'])
+def upload_image(project_id):
+    """为项目上传图片"""
+    print(f"正在为项目 {project_id} 上传图片")
+    
+    if 'image' not in request.files:
+        print("没有找到图片文件")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        print("文件名为空")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    if file and allowed_file(file.filename):
+        # 生成唯一文件名
+        filename = secure_filename(file.filename)
+        unique_filename = f"{project_id}_{uuid.uuid4().hex[:8]}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        print(f"保存图片到: {filepath}")
+        file.save(filepath)
+        
+        # 获取项目信息
+        project = get_project_by_id_sqlite(project_id)
+        if not project:
+            print(f"项目 {project_id} 不存在")
+            return jsonify({"success": False, "message": "项目不存在"}), 404
+            
+        # 删除旧图片
+        if project.get('image'):
+            old_path = project['image'].replace('/static/', 'static/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                print(f"删除旧图片: {old_path}")
+        
+        # 使用SQLite更新项目图片
+        image_url = f"/static/uploads/{unique_filename}"
+        success = update_project_image_sqlite(project_id, image_url)
+        
+        if success:
+            print(f"项目 {project_id} 图片已更新")
+            return jsonify({"success": True, "image_url": image_url})
+        else:
+            return jsonify({"success": False, "message": "更新图片失败"}), 500
+    
+    print("文件格式不支持")
+    return jsonify({"success": False, "message": "文件格式不支持"}), 400
+
+if __name__ == '__main__':
+    # 初始化SQLite数据库
+    init_database()
+    
+    # 如果存在JSON文件，进行数据迁移
+    if os.path.exists(PROJECTS_FILE):
+        migrate_json_to_sqlite()
+    
+    print("数据库准备完成，启动Flask应用...")
+    
+    # 临时调试，端口是 9936
+    # 开机运行，端口是 9926
+    app.run(debug=True, host='0.0.0.0', port=9926)
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\my_files.txt
+内容:
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\app.py
+内容:
+import json
+import os
+import subprocess
+import sys
+import requests
+import sqlite3
+from flask import Flask, render_template, jsonify, request, abort, send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+from datetime import datetime
+
+# cmd /c "c:\Users\Administrator\Work\flask_port_app\port_venv\Scripts\activate.bat"
+
+
+app = Flask(__name__)
+PROJECTS_FILE = 'projects.json'
+DATABASE_FILE = 'projects.db'
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# 确保上传目录存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- SQLite 数据库操作 ---
+
+def init_database():
+    """初始化SQLite数据库"""
+    print("正在初始化SQLite数据库...")
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    # 创建projects表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            url TEXT NOT NULL,
+            path TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("SQLite数据库初始化完成")
+
+def migrate_json_to_sqlite():
+    """将JSON数据迁移到SQLite数据库"""
+    if not os.path.exists(PROJECTS_FILE):
+        print("没有找到JSON文件，跳过数据迁移")
+        return
+        
+    print("正在从JSON迁移数据到SQLite...")
+    
+    # 读取JSON数据
+    json_projects = get_projects_data_from_json()
+    if not json_projects:
+        print("JSON文件为空，跳过数据迁移")
+        return
+    
+    # 写入SQLite数据库
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    for project in json_projects:
+        cursor.execute('''
+            INSERT OR REPLACE INTO projects (id, name, description, url, path, image)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            project.get('id'),
+            project.get('name', ''),
+            project.get('description', ''),
+            project.get('url', ''),
+            project.get('path', ''),
+            project.get('image', '')
+        ))
+    
+    conn.commit()
+    conn.close()
+    
+    # 备份JSON文件
+    backup_file = f"{PROJECTS_FILE}.backup"
+    os.rename(PROJECTS_FILE, backup_file)
+    print(f"数据迁移完成，JSON文件已备份为: {backup_file}")
+
+def get_db_connection():
+    """获取数据库连接"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row  # 使结果可以像字典一样访问
+    return conn
+
+def get_projects_data_sqlite():
+    """从SQLite数据库获取项目数据"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # 转换为字典列表
+    projects = []
+    for row in rows:
+        projects.append({
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        })
+    
+    return projects
+
+def add_project_sqlite(name, description, url, path):
+    """向SQLite数据库添加项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects (name, description, url, path)
+        VALUES (?, ?, ?, ?)
+    ''', (name, description, url, path))
+    
+    project_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    print(f"SQLite: 添加项目成功，ID: {project_id}")
+    return project_id
+
+def update_project_sqlite(project_id, name, description, url, path):
+    """更新SQLite数据库中的项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET name = ?, description = ?, url = ?, path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (name, description, url, path, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def delete_project_sqlite(project_id):
+    """从SQLite数据库删除项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 删除项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def update_project_image_sqlite(project_id, image_url):
+    """更新SQLite数据库中项目的图片"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET image = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (image_url, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id} 图片，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def get_project_by_id_sqlite(project_id):
+    """从SQLite数据库获取单个项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        }
+    return None
+
+# --- 数据处理（兼容JSON和SQLite）---
+
+def get_projects_data_from_json():
+    """从JSON文件获取项目数据（用于迁移）"""
+    if not os.path.exists(PROJECTS_FILE):
+        return []
+    with open(PROJECTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if isinstance(data, list):
+            data.sort(key=lambda p: p.get('id', 0))
+            return data
+        return []
+
+def get_projects_data():
+    """获取项目数据（优先使用SQLite）"""
+    if os.path.exists(DATABASE_FILE):
+        print("使用SQLite数据库获取项目数据")
+        return get_projects_data_sqlite()
+    else:
+        print("使用JSON文件获取项目数据")
+        return get_projects_data_from_json()
+
+def save_projects_data(projects):
+    """保存项目数据（兼容性函数，实际不再使用）"""
+    print("警告: save_projects_data 函数已废弃，请使用SQLite操作函数")
+    pass
+
+# --- 核心路由 ---
+
+@app.route('/')
+def index():
+    """
+    主页路由。
+    【关键修复】：直接将 Python 列表传递给模板，而不是JSON字符串。
+    Jinja的 `tojson` 过滤器会处理好剩下的事情。
+    """
+    projects = get_projects_data()
+    return render_template('index.html', projects=projects)
+
+# --- API 路由 ---
+
+@app.route('/api/projects', methods=['POST'])
+def add_project():
+    """添加一个新项目。"""
+    data = request.get_json()
+    if not data or not data.get('name') or not data.get('url'):
+        abort(400, description="缺少项目名称或URL")
+
+    print(f"正在添加新项目: {data.get('name')}")
+    
+    # 使用SQLite添加项目
+    project_id = add_project_sqlite(
+        data['name'],
+        data.get('description', ''),
+        data['url'],
+        data.get('path', '')
+    )
+    
+    # 获取新创建的项目
+    new_project = get_project_by_id_sqlite(project_id)
+    return jsonify(new_project), 201
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    """更新一个已有的项目。"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="缺少更新数据")
+
+    print(f"正在更新项目 {project_id}")
+    
+    # 使用SQLite更新项目
+    success = update_project_sqlite(
+        project_id,
+        data.get('name', ''),
+        data.get('description', ''),
+        data.get('url', ''),
+        data.get('path', '')
+    )
+    
+    if not success:
+        abort(404, description="未找到项目")
+    
+    # 获取更新后的项目
+    updated_project = get_project_by_id_sqlite(project_id)
+    return jsonify(updated_project)
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """删除一个项目。"""
+    print(f"正在删除项目 {project_id}")
+    
+    # 使用SQLite删除项目
+    success = delete_project_sqlite(project_id)
+    if not success:
+        abort(404, description="未找到项目")
+    
+    return jsonify({"success": True, "message": "项目已删除"})
+
+@app.route('/api/open-folder/<int:project_id>')
+def open_folder(project_id):
+    """在本地文件浏览器中打开项目文件夹。"""
+    projects = get_projects_data()
+    project = next((p for p in projects if p.get('id') == project_id), None)
+    if not project or not project.get('path') or not os.path.isdir(project.get('path')):
+        return jsonify({"success": False, "message": "路径无效或不存在"}), 404
+
+    path = project['path']
+    if sys.platform == "win32":
+        os.startfile(path)
+    elif sys.platform == "darwin": # macOS
+        subprocess.run(["open", path])
+    else: # Linux
+        subprocess.run(["xdg-open", path])
+    return jsonify({"success": True})
+
+@app.route('/api/upload-image/<int:project_id>', methods=['POST'])
+def upload_image(project_id):
+    """为项目上传图片"""
+    print(f"正在为项目 {project_id} 上传图片")
+    
+    if 'image' not in request.files:
+        print("没有找到图片文件")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        print("文件名为空")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    if file and allowed_file(file.filename):
+        # 生成唯一文件名
+        filename = secure_filename(file.filename)
+        unique_filename = f"{project_id}_{uuid.uuid4().hex[:8]}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        print(f"保存图片到: {filepath}")
+        file.save(filepath)
+        
+        # 获取项目信息
+        project = get_project_by_id_sqlite(project_id)
+        if not project:
+            print(f"项目 {project_id} 不存在")
+            return jsonify({"success": False, "message": "项目不存在"}), 404
+            
+        # 删除旧图片
+        if project.get('image'):
+            old_path = project['image'].replace('/static/', 'static/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                print(f"删除旧图片: {old_path}")
+        
+        # 使用SQLite更新项目图片
+        image_url = f"/static/uploads/{unique_filename}"
+        success = update_project_image_sqlite(project_id, image_url)
+        
+        if success:
+            print(f"项目 {project_id} 图片已更新")
+            return jsonify({"success": True, "image_url": image_url})
+        else:
+            return jsonify({"success": False, "message": "更新图片失败"}), 500
+    
+    print("文件格式不支持")
+    return jsonify({"success": False, "message": "文件格式不支持"}), 400
+
+@app.route('/api/export', methods=['GET'])
+def export_projects():
+    """导出项目数据为JSON格式"""
+    print("正在导出项目数据...")
+    
+    try:
+        projects = get_projects_data()
+        
+        # 生成导出文件名（包含时间戳）
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        filename = f"projects_export_{timestamp}.json"
+        
+        # 创建响应
+        response_data = {
+            "export_time": datetime.now().isoformat(),
+            "total_projects": len(projects),
+            "projects": projects
+        }
+        
+        print(f"导出完成，共 {len(projects)} 个项目")
+        
+        # 返回JSON数据，让前端处理下载
+        return jsonify({
+            "success": True,
+            "filename": filename,
+            "data": response_data
+        })
+        
+    except Exception as e:
+        print(f"导出失败: {str(e)}")
+        return jsonify({"success": False, "message": f"导出失败: {str(e)}"}), 500
+
+@app.route('/api/import', methods=['POST'])
+def import_projects():
+    """导入项目数据"""
+    print("正在导入项目数据...")
+    
+    try:
+        # 获取请求数据
+        data = request.get_json()
+        if not data:
+            return jsonify({"success": False, "message": "没有接收到数据"}), 400
+        
+        projects_data = data.get('projects', [])
+        replace_existing = data.get('replace_existing', False)
+        
+        if not projects_data:
+            return jsonify({"success": False, "message": "导入数据为空"}), 400
+        
+        print(f"准备导入 {len(projects_data)} 个项目，替换现有数据: {replace_existing}")
+        
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # 如果选择替换现有数据，先清空表
+        if replace_existing:
+            print("清空现有项目数据...")
+            cursor.execute('DELETE FROM projects')
+            # 重置自增ID
+            cursor.execute('DELETE FROM sqlite_sequence WHERE name="projects"')
+        
+        # 导入新数据
+        imported_count = 0
+        for project in projects_data:
+            try:
+                # 如果不替换现有数据，检查是否已存在相同名称的项目
+                if not replace_existing:
+                    cursor.execute('SELECT COUNT(*) FROM projects WHERE name = ?', (project.get('name', ''),))
+                    if cursor.fetchone()[0] > 0:
+                        print(f"跳过重复项目: {project.get('name', '')}")
+                        continue
+                
+                # 插入项目数据
+                cursor.execute('''
+                    INSERT INTO projects (name, description, url, path, image)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    project.get('name', ''),
+                    project.get('description', ''),
+                    project.get('url', ''),
+                    project.get('path', ''),
+                    project.get('image', '')
+                ))
+                imported_count += 1
+                print(f"导入项目: {project.get('name', '')}")
+                
+            except Exception as e:
+                print(f"导入项目失败 {project.get('name', '')}: {str(e)}")
+                continue
+        
+        conn.commit()
+        conn.close()
+        
+        print(f"导入完成，成功导入 {imported_count} 个项目")
+        
+        return jsonify({
+            "success": True,
+            "message": f"成功导入 {imported_count} 个项目",
+            "imported_count": imported_count,
+            "total_count": len(projects_data)
+        })
+        
+    except Exception as e:
+        print(f"导入失败: {str(e)}")
+        return jsonify({"success": False, "message": f"导入失败: {str(e)}"}), 500
+
+if __name__ == '__main__':
+    # 初始化SQLite数据库
+    init_database()
+    
+    # 如果存在JSON文件，进行数据迁移
+    if os.path.exists(PROJECTS_FILE):
+        migrate_json_to_sqlite()
+    
+    print("数据库准备完成，启动Flask应用...")
+    
+    # 临时调试，端口是 9936
+    # 开机运行，端口是 9926
+    app.run(debug=True, host='0.0.0.0', port=9936)
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\app.pyw
+内容:
+import json
+import os
+import subprocess
+import sys
+import requests
+import sqlite3
+from flask import Flask, render_template, jsonify, request, abort, send_from_directory
+from werkzeug.utils import secure_filename
+import uuid
+from datetime import datetime
+
+# cmd /c "c:\Users\Administrator\Work\flask_port_app\port_venv\Scripts\activate.bat"
+
+
+app = Flask(__name__)
+PROJECTS_FILE = 'projects.json'
+DATABASE_FILE = 'projects.db'
+UPLOAD_FOLDER = 'static/uploads'
+ALLOWED_EXTENSIONS = {'png', 'jpg', 'jpeg', 'gif'}
+
+# 确保上传目录存在
+os.makedirs(UPLOAD_FOLDER, exist_ok=True)
+
+def allowed_file(filename):
+    return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
+
+# --- SQLite 数据库操作 ---
+
+def init_database():
+    """初始化SQLite数据库"""
+    print("正在初始化SQLite数据库...")
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    # 创建projects表
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS projects (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            description TEXT DEFAULT '',
+            url TEXT NOT NULL,
+            path TEXT DEFAULT '',
+            image TEXT DEFAULT '',
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    ''')
+    
+    conn.commit()
+    conn.close()
+    print("SQLite数据库初始化完成")
+
+def migrate_json_to_sqlite():
+    """将JSON数据迁移到SQLite数据库"""
+    if not os.path.exists(PROJECTS_FILE):
+        print("没有找到JSON文件，跳过数据迁移")
+        return
+        
+    print("正在从JSON迁移数据到SQLite...")
+    
+    # 读取JSON数据
+    json_projects = get_projects_data_from_json()
+    if not json_projects:
+        print("JSON文件为空，跳过数据迁移")
+        return
+    
+    # 写入SQLite数据库
+    conn = sqlite3.connect(DATABASE_FILE)
+    cursor = conn.cursor()
+    
+    for project in json_projects:
+        cursor.execute('''
+            INSERT OR REPLACE INTO projects (id, name, description, url, path, image)
+            VALUES (?, ?, ?, ?, ?, ?)
+        ''', (
+            project.get('id'),
+            project.get('name', ''),
+            project.get('description', ''),
+            project.get('url', ''),
+            project.get('path', ''),
+            project.get('image', '')
+        ))
+    
+    conn.commit()
+    conn.close()
+    
+    # 备份JSON文件
+    backup_file = f"{PROJECTS_FILE}.backup"
+    os.rename(PROJECTS_FILE, backup_file)
+    print(f"数据迁移完成，JSON文件已备份为: {backup_file}")
+
+def get_db_connection():
+    """获取数据库连接"""
+    conn = sqlite3.connect(DATABASE_FILE)
+    conn.row_factory = sqlite3.Row  # 使结果可以像字典一样访问
+    return conn
+
+def get_projects_data_sqlite():
+    """从SQLite数据库获取项目数据"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects ORDER BY id')
+    rows = cursor.fetchall()
+    conn.close()
+    
+    # 转换为字典列表
+    projects = []
+    for row in rows:
+        projects.append({
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        })
+    
+    return projects
+
+def add_project_sqlite(name, description, url, path):
+    """向SQLite数据库添加项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        INSERT INTO projects (name, description, url, path)
+        VALUES (?, ?, ?, ?)
+    ''', (name, description, url, path))
+    
+    project_id = cursor.lastrowid
+    conn.commit()
+    conn.close()
+    
+    print(f"SQLite: 添加项目成功，ID: {project_id}")
+    return project_id
+
+def update_project_sqlite(project_id, name, description, url, path):
+    """更新SQLite数据库中的项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET name = ?, description = ?, url = ?, path = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (name, description, url, path, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def delete_project_sqlite(project_id):
+    """从SQLite数据库删除项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM projects WHERE id = ?', (project_id,))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 删除项目 {project_id}，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def update_project_image_sqlite(project_id, image_url):
+    """更新SQLite数据库中项目的图片"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('''
+        UPDATE projects 
+        SET image = ?, updated_at = CURRENT_TIMESTAMP
+        WHERE id = ?
+    ''', (image_url, project_id))
+    
+    conn.commit()
+    affected_rows = cursor.rowcount
+    conn.close()
+    
+    print(f"SQLite: 更新项目 {project_id} 图片，影响行数: {affected_rows}")
+    return affected_rows > 0
+
+def get_project_by_id_sqlite(project_id):
+    """从SQLite数据库获取单个项目"""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT * FROM projects WHERE id = ?', (project_id,))
+    row = cursor.fetchone()
+    conn.close()
+    
+    if row:
+        return {
+            'id': row['id'],
+            'name': row['name'],
+            'description': row['description'],
+            'url': row['url'],
+            'path': row['path'],
+            'image': row['image'],
+            'created_at': row['created_at'],
+            'updated_at': row['updated_at']
+        }
+    return None
+
+# --- 数据处理（兼容JSON和SQLite）---
+
+def get_projects_data_from_json():
+    """从JSON文件获取项目数据（用于迁移）"""
+    if not os.path.exists(PROJECTS_FILE):
+        return []
+    with open(PROJECTS_FILE, 'r', encoding='utf-8') as f:
+        data = json.load(f)
+        if isinstance(data, list):
+            data.sort(key=lambda p: p.get('id', 0))
+            return data
+        return []
+
+def get_projects_data():
+    """获取项目数据（优先使用SQLite）"""
+    if os.path.exists(DATABASE_FILE):
+        print("使用SQLite数据库获取项目数据")
+        return get_projects_data_sqlite()
+    else:
+        print("使用JSON文件获取项目数据")
+        return get_projects_data_from_json()
+
+def save_projects_data(projects):
+    """保存项目数据（兼容性函数，实际不再使用）"""
+    print("警告: save_projects_data 函数已废弃，请使用SQLite操作函数")
+    pass
+
+# --- 核心路由 ---
+
+@app.route('/')
+def index():
+    """
+    主页路由。
+    【关键修复】：直接将 Python 列表传递给模板，而不是JSON字符串。
+    Jinja的 `tojson` 过滤器会处理好剩下的事情。
+    """
+    projects = get_projects_data()
+    return render_template('index.html', projects=projects)
+
+# --- API 路由 ---
+
+@app.route('/api/projects', methods=['POST'])
+def add_project():
+    """添加一个新项目。"""
+    data = request.get_json()
+    if not data or not data.get('name') or not data.get('url'):
+        abort(400, description="缺少项目名称或URL")
+
+    print(f"正在添加新项目: {data.get('name')}")
+    
+    # 使用SQLite添加项目
+    project_id = add_project_sqlite(
+        data['name'],
+        data.get('description', ''),
+        data['url'],
+        data.get('path', '')
+    )
+    
+    # 获取新创建的项目
+    new_project = get_project_by_id_sqlite(project_id)
+    return jsonify(new_project), 201
+
+@app.route('/api/projects/<int:project_id>', methods=['PUT'])
+def update_project(project_id):
+    """更新一个已有的项目。"""
+    data = request.get_json()
+    if not data:
+        abort(400, description="缺少更新数据")
+
+    print(f"正在更新项目 {project_id}")
+    
+    # 使用SQLite更新项目
+    success = update_project_sqlite(
+        project_id,
+        data.get('name', ''),
+        data.get('description', ''),
+        data.get('url', ''),
+        data.get('path', '')
+    )
+    
+    if not success:
+        abort(404, description="未找到项目")
+    
+    # 获取更新后的项目
+    updated_project = get_project_by_id_sqlite(project_id)
+    return jsonify(updated_project)
+
+@app.route('/api/projects/<int:project_id>', methods=['DELETE'])
+def delete_project(project_id):
+    """删除一个项目。"""
+    print(f"正在删除项目 {project_id}")
+    
+    # 使用SQLite删除项目
+    success = delete_project_sqlite(project_id)
+    if not success:
+        abort(404, description="未找到项目")
+    
+    return jsonify({"success": True, "message": "项目已删除"})
+
+@app.route('/api/open-folder/<int:project_id>')
+def open_folder(project_id):
+    """在本地文件浏览器中打开项目文件夹。"""
+    projects = get_projects_data()
+    project = next((p for p in projects if p.get('id') == project_id), None)
+    if not project or not project.get('path') or not os.path.isdir(project.get('path')):
+        return jsonify({"success": False, "message": "路径无效或不存在"}), 404
+
+    path = project['path']
+    if sys.platform == "win32":
+        os.startfile(path)
+    elif sys.platform == "darwin": # macOS
+        subprocess.run(["open", path])
+    else: # Linux
+        subprocess.run(["xdg-open", path])
+    return jsonify({"success": True})
+
+@app.route('/api/upload-image/<int:project_id>', methods=['POST'])
+def upload_image(project_id):
+    """为项目上传图片"""
+    print(f"正在为项目 {project_id} 上传图片")
+    
+    if 'image' not in request.files:
+        print("没有找到图片文件")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    file = request.files['image']
+    if file.filename == '':
+        print("文件名为空")
+        return jsonify({"success": False, "message": "没有选择文件"}), 400
+    
+    if file and allowed_file(file.filename):
+        # 生成唯一文件名
+        filename = secure_filename(file.filename)
+        unique_filename = f"{project_id}_{uuid.uuid4().hex[:8]}_{filename}"
+        filepath = os.path.join(UPLOAD_FOLDER, unique_filename)
+        
+        print(f"保存图片到: {filepath}")
+        file.save(filepath)
+        
+        # 获取项目信息
+        project = get_project_by_id_sqlite(project_id)
+        if not project:
+            print(f"项目 {project_id} 不存在")
+            return jsonify({"success": False, "message": "项目不存在"}), 404
+            
+        # 删除旧图片
+        if project.get('image'):
+            old_path = project['image'].replace('/static/', 'static/')
+            if os.path.exists(old_path):
+                os.remove(old_path)
+                print(f"删除旧图片: {old_path}")
+        
+        # 使用SQLite更新项目图片
+        image_url = f"/static/uploads/{unique_filename}"
+        success = update_project_image_sqlite(project_id, image_url)
+        
+        if success:
+            print(f"项目 {project_id} 图片已更新")
+            return jsonify({"success": True, "image_url": image_url})
+        else:
+            return jsonify({"success": False, "message": "更新图片失败"}), 500
+    
+    print("文件格式不支持")
+    return jsonify({"success": False, "message": "文件格式不支持"}), 400
+
+if __name__ == '__main__':
+    # 初始化SQLite数据库
+    init_database()
+    
+    # 如果存在JSON文件，进行数据迁移
+    if os.path.exists(PROJECTS_FILE):
+        migrate_json_to_sqlite()
+    
+    print("数据库准备完成，启动Flask应用...")
+    
+    # 临时调试，端口是 9936
+    # 开机运行，端口是 9926
+    app.run(debug=True, host='0.0.0.0', port=9926)
+
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\projects.db
+内容: [无法作为文本读取，可能是二进制文件]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\projects.json.backup
+内容:
+[
+  {
+    "id": 4,
+    "name": "gist app 我的代码片段 ",
+    "description": "",
+    "url": "http://127.0.0.1:5070/",
+    "path": "D:\\fullStack\\flask_gist_app",
+    "image": "/static/uploads/4_9a0bb795_shark.jpg"
+  },
+  {
+    "id": 5,
+    "name": "file server 本地文件服务器",
+    "description": "",
+    "url": "http://127.0.0.1:5050/",
+    "path": "C:\\Users\\Administrator\\Code\\Django_Blog\\new-flask-file-server",
+    "image": "/static/uploads/5_3fb644cb_SAAM-1967.59.931_1.jpg"
+  },
+  {
+    "id": 6,
+    "name": "utils 图片小工具",
+    "description": "",
+    "url": "http://127.0.0.1:5080/",
+    "path": "C:\\Users\\Administrator\\Work\\flask_utils",
+    "image": "/static/uploads/6_8c9204cc_Kopiec_9.jpg"
+  },
+  {
+    "id": 7,
+    "name": "read zhihu 阅读知乎app",
+    "description": "",
+    "url": "http://127.0.0.1:5060/",
+    "path": "C:\\Users\\Administrator\\Work\\read_zhihu_app"
+  },
+  {
+    "id": 8,
+    "name": "port app 端口管理",
+    "description": "即，此app",
+    "url": "http://127.0.0.1:9926/",
+    "path": "C:\\Users\\Administrator\\Work\\flask_port_app"
+  }
+]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\req.txt
+内容:
+Flask
+Werkzeug
+chardet
+Flask-SQLAlchemy
+python-dotenv
+numpy
+tqdm
+imagehash
+requests
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\run_flask_port.bat
+内容:
+@echo off
+
+cd /d "C:\Users\Administrator\Work\flask_port_app"
+
+call .\port_venv\Scripts\activate.bat
+
+pythonw app.pyw
+
+
+@REM 2. 把这个 bat 文件, 复制一份，放到启动目录
+@REM > C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup 
+
+
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\start_repo.py
+内容:
+import os
+import subprocess
+import json
+import requests
+from dotenv import load_dotenv  # pip install python-dotenv
+
+# 加载 .env 文件
+load_dotenv()
+
+# 从 .env 文件读取 GitHub Personal Access Token
+GITHUB_USER = "buxuele"
+GITHUB_TOKEN = os.getenv("GITHUB_TOKEN")
+
+gitignore_content = """# 默认 .gitignore 文件，由 start_repo.py 创建
+# 请编辑此文件以添加需要忽略的文件或目录
+node_modules/
+*.log
+*.pyc
+__pycache__/
+
+# 文件夹
+.idea/
+instance/
+flask_venv/
+static/uploads/
+
+# 一些关键文件！！
+*.json
+*.bak
+.env
+
+*.pyc
+*.pyw
+*.bat
+
+start_repo.py
+gg.bat
+
+
+"""
+
+
+def run_command(command):
+    """运行系统命令并返回输出"""
+    print(f"📢 执行命令: {command}")
+    result = subprocess.run(command, shell=True, text=True, encoding="utf-8", errors="ignore")
+    print(f"命令输出: {result.stdout}")
+    if result.stderr:
+        print(f"命令错误: {result.stderr}")
+    if result.returncode != 0:
+        print(f"😵 命令 '{command}' 失败，退出码: {result.returncode}")
+        exit(1)
+    return result.stdout
+
+
+def check_repository_exists(repo_name):
+    """检查 GitHub 仓库是否存在"""
+    print(f"📢 检查仓库 '{repo_name}' 是否存在...")
+    url = f"https://api.github.com/repos/{GITHUB_USER}/{repo_name}"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}"}
+    response = requests.get(url, headers=headers)
+    print(f"📢 API 响应状态码: {response.status_code}")
+
+    if response.status_code == 200:
+        print(f"🎉 仓库 '{repo_name}' 已存在，将直接使用！")
+        return True, response.json().get("html_url") + ".git"
+    elif response.status_code == 404:
+        print(f"📢 仓库 '{repo_name}' 不存在，将创建新仓库。")
+        return False, None
+    else:
+        print(f"😵 检查仓库失败，错误信息: {response.json().get('message', '未知错误')}")
+        exit(1)
+
+
+def create_repository(repo_name, description):
+    """通过 GitHub API 创建新仓库"""
+    print(f"📢 创建新仓库 '{repo_name}'...")
+    url = "https://api.github.com/user/repos"
+    headers = {"Authorization": f"token {GITHUB_TOKEN}", "Accept": "application/vnd.github.v3+json"}
+    data = {
+        "name": repo_name,
+        "description": description or "",
+        "private": False
+    }
+    response = requests.post(url, headers=headers, json=data)
+    print(f"📢 API 创建响应状态码: {response.status_code}")
+
+    if response.status_code == 201:
+        print(f"🎉 新仓库 '{repo_name}' 创建成功！")
+        return response.json().get("html_url") + ".git"
+    else:
+        print(f"😵 创建仓库失败，错误信息: {response.json().get('message', '未知错误')}")
+        exit(1)
+
+
+def create_gitignore():
+    """创建默认 .gitignore 文件"""
+
+    if not os.path.exists(".gitignore"):
+        with open(".gitignore", "w", encoding="utf-8") as f:
+            f.write(gitignore_content)
+        print("📢 已创建 .gitignore 文件，请检查并编辑！")
+    else:
+        print("📢 .gitignore 文件已存在，请检查是否需要修改！")
+
+
+def main():
+    # 检查 Token 是否有效
+    if not GITHUB_TOKEN:
+        print("😵 错误：未在 .env 文件中找到 GITHUB_TOKEN！请确保 .env 文件存在并包含有效的 Token。")
+        exit(1)
+
+    # 获取当前文件夹名称作为默认仓库名
+    default_repo_name = os.path.basename(os.getcwd())
+    print(f"📢 默认仓库名称: {default_repo_name}")
+
+    # 检查仓库是否存在
+    repo_exists, remote_url = check_repository_exists(default_repo_name)
+
+    # 如果仓库不存在，询问用户是否创建
+    if not repo_exists:
+        use_default = input(f"是否使用默认仓库名称 '{default_repo_name}'？(y/n): ").strip().lower()
+        if use_default == "y":
+            repo_name = default_repo_name
+        else:
+            repo_name = input("请输入仓库名称: ").strip()
+            if not repo_name:
+                print("😵 错误：仓库名称不能为空！")
+                exit(1)
+        description = input("请输入仓库描述（可选，按回车跳过）: ").strip()
+        remote_url = create_repository(repo_name, description)
+    else:
+        repo_name = default_repo_name
+
+    print(f"📢 远程仓库地址: {remote_url}")
+
+    if "README.md" not in os.listdir():
+        # 创建 README.md
+        print("📢 创建 README.md 文件...")
+        with open("README.md", "w", encoding="utf-8") as f:
+            f.write(f"# {repo_name}\n")
+
+    # 初始化 Git 仓库
+    print("📢 初始化 Git 仓库...")
+    run_command("git init")
+    run_command("git branch -M main")
+
+    # 创建或检查 .gitignore
+    create_gitignore()
+
+    # 显示 git status 并暂停
+    print("\n📋 当前 Git 状态：")
+    run_command("git status")
+    input("请检查 git status 和 .gitignore 文件，编辑后按回车继续...")
+
+    # 添加所有更改
+    print("📢 添加所有更改...")
+    run_command("git add .")
+
+    # 提交更改
+    commit_msg = input("请输入提交信息（默认：ok）: ").strip() or "ok"
+    print(f"📢 使用提交信息: {commit_msg}")
+    run_command(f'git commit -m "{commit_msg}"')
+
+    # 检查是否已存在 origin
+    print("📢 检查远程仓库 'origin'...")
+    result = subprocess.run("git remote get-url origin", shell=True, text=True, capture_output=True, encoding="utf-8",
+                            errors="ignore")
+    if result.returncode == 0:
+        print("📢 远程仓库 'origin' 已存在，跳过添加。")
+    else:
+        print(f"📢 添加远程仓库: {remote_url}")
+        run_command(f"git remote add origin {remote_url}")
+
+    # 推送代码
+    print("📢 正在推送代码到远程仓库...")
+    run_command("git push -u origin main")
+
+    # 显示最终状态
+    print("\n📋 最终 Git 状态：")
+    run_command("git status")
+    print("🎉 搞定啦！仓库已创建并推送成功！")
+
+
+if __name__ == "__main__":
+    main()
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\todo.md
+内容:
+### 新增一个功能，即对于每个服务而言
+
+- 增加： 停止服务，即，我要修改项目的代码。
+- 增加： 启动。 此时是重新启动！
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\项目介绍.md
+内容:
+
+### 做的过程
+
+
+### 把此 app 设置为开机自动启动
+
+1. 先写一个 bat 文件
+
+run_flask_port.bat
+
+```bat
+@echo off
+
+cd /d "C:\Users\Administrator\Work\flask_utils"
+
+call .\flask_venv\Scripts\activate.bat
+
+pythonw app.pyw
+
+```
+
+2. 把这个 bat 文件, 复制一份，放到启动目录
+
+> C:\Users\Administrator\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Startup 
+
+
+
+
+目录: .vscode
+内容: [这是一个目录]
+
+目录: static
+内容: [这是一个目录]
+
+目录: templates
+内容: [这是一个目录]
+
+目录: 效果图
+内容: [这是一个目录]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\.vscode\settings.json
+内容:
+{}
+
+
+目录: static\css
+内容: [这是一个目录]
+
+目录: static\js
+内容: [这是一个目录]
+
+目录: static\uploads
+内容: [这是一个目录]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\static\css\style.css
+内容:
+/* --- 整体布局与外观 --- */
+body {
+  background-color: #fdfaf6;
+}
+.main-container {
+  width: 98%;
+  max-width: 1800px;
+}
+.project-card {
+  background-color: #e9ecef; /* 背景色稍微深一点 */
+  border: 2px solid #495057; /* 边框更粗更黑 */
+  border-radius: 1rem; /* 圆角更圆润 16px */
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15); /* 增强阴影层次感 */
+  display: flex;
+  flex-direction: column;
+  transform: scale(1.05);
+  margin-bottom: 1rem;
+}
+
+.project-card:hover {
+  /* 移除悬停动画 */
+}
+
+/* --- 卡片内部元素 --- */
+.card-title {
+  font-weight: 600;
+}
+.card-body {
+  position: relative;
+}
+.card-actions-dropdown {
+  position: absolute;
+  top: 1rem;
+  right: 1rem;
+}
+/* 删除重复的样式定义，使用下面统一的样式 */
+.info-line {
+  display: flex;
+  align-items: center;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #495057;
+  margin-top: 0.5rem;
+}
+.info-line span {
+  word-break: break-all;
+  margin-right: 0.5rem;
+}
+.info-line .copy-btn {
+  margin-left: auto;
+}
+
+/* --- 状态指示器 --- */
+.status-indicator {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+.status-online {
+  background-color: #28a745;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
+}
+.status-offline {
+  background-color: #dc3545;
+  box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
+}
+.status-checking {
+  background-color: #ffc107;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+/* --- 项目图片样式 --- */
+.project-icon {
+  width: 100px;
+  height: 100px;
+  position: relative;
+}
+.project-image {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 12px;
+  border: 2px solid #dee2e6;
+}
+.icon-placeholder {
+  width: 100px;
+  height: 100px;
+  border-radius: 12px;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 3rem;
+  font-weight: bold;
+  flex-shrink: 0;
+}
+/* --- 表单输入框样式优化 --- */
+.modal .form-control {
+  border: 2px solid #495057 !important;
+  border-radius: 8px;
+}
+
+.modal .form-control:focus {
+  border-color: #007bff !important;
+  box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25) !important;
+}
+
+.modal textarea.form-control {
+  border: 2px solid #495057 !important;
+  border-radius: 8px;
+}
+
+.modal input[type="file"].form-control {
+  border: 2px solid #495057 !important;
+  border-radius: 8px;
+  padding: 8px 12px;
+}
+/* --- 右键菜单样式 --- */
+.context-menu {
+  min-width: 180px;
+  background: white;
+  border: 1px solid #dee2e6;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 9999;
+}
+
+.context-menu-item {
+  cursor: pointer;
+  transition: background-color 0.2s;
+  border-radius: 4px;
+  margin: 2px;
+}
+
+.context-menu-item:hover {
+  background-color: #f8f9fa;
+}
+
+.context-menu-item.text-danger:hover {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+/* --- 批量选择样式 --- */
+.batch-checkbox {
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 4px;
+  padding: 4px;
+}
+
+.project-checkbox {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- 快捷键提示样式 --- */
+.shortcut-hint {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: rgba(0, 0, 0, 0.8);
+  color: white;
+  padding: 10px 15px;
+  border-radius: 8px;
+  font-size: 12px;
+  z-index: 1000;
+  display: none;
+}
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\static\js\script.js
+内容:
+/**
+ * 文件: static/js/script.js
+ * 描述: 重写后的前端脚本，使用事件委托来处理所有卡片交互。
+ */
+
+// --- 辅助函数 ---
+
+/**
+ * 截断过长的文件路径用于显示。
+ * @param {string} path - 完整路径.
+ * @param {number} maxLength - 最大长度.
+ * @returns {string} - 截断后的路径.
+ */
+function truncatePath(path, maxLength = 40) {
+  if (!path || path.length <= maxLength) return path;
+  const separator = path.includes("/") ? "/" : "\\";
+  const parts = path.split(separator);
+  if (parts.length <= 2) return path;
+  const head = parts[0];
+  const tail = parts[parts.length - 1];
+  return `${head}${separator}...${separator}${tail}`;
+}
+
+/**
+ * 检测项目在线状态
+ * @param {number} projectId - 项目ID
+ * @param {string} url - 项目URL
+ */
+function checkProjectStatus(projectId, url) {
+  console.log(`正在检测项目 ${projectId} 的状态: ${url}`);
+  const statusElement = document.getElementById(`status-${projectId}`);
+
+  // 使用fetch检测URL是否可访问
+  fetch(url, {
+    method: "HEAD",
+    mode: "no-cors",
+    timeout: 5000,
+  })
+    .then(() => {
+      console.log(`项目 ${projectId} 在线`);
+      statusElement.className = "status-indicator status-online";
+    })
+    .catch(() => {
+      console.log(`项目 ${projectId} 离线或有问题`);
+      statusElement.className = "status-indicator status-offline";
+    });
+}
+
+/**
+ * 复制文本到剪贴板，并向用户提供反馈。
+ * @param {string} text - 要复制的文本.
+ * @param {HTMLElement} btn - 被点击的按钮元素.
+ */
+function copyToClipboard(text, btn) {
+  console.log(`正在复制文本: ${text}`);
+  navigator.clipboard
+    .writeText(text)
+    .then(() => {
+      console.log("复制成功");
+      const originalContent = btn.innerHTML;
+      btn.innerHTML = `已复制`;
+      btn.classList.add("btn-success");
+      btn.classList.remove("btn-outline-secondary");
+      setTimeout(() => {
+        btn.innerHTML = originalContent;
+        btn.classList.remove("btn-success");
+        btn.classList.add("btn-outline-secondary");
+      }, 2000);
+    })
+    .catch((err) => {
+      console.error("复制失败: ", err);
+      alert("复制失败！");
+    });
+}
+
+/**
+ * 在不刷新页面的情况下，更新DOM中的卡片信息（用于编辑后）。
+ * @param {object} project - 更新后的项目对象.
+ */
+function updateCardInDOM(project) {
+  const card = document.getElementById(`project-card-${project.id}`);
+  if (!card) return;
+
+  card.querySelector(".card-title").textContent = project.name;
+  card.querySelector(".icon-placeholder").textContent =
+    project.name.length > 0 ? project.name[0].toUpperCase() : "?";
+  card.querySelector(".card-text").textContent = project.description;
+
+  const pathElement = card.querySelector(".path-text");
+  if (pathElement) {
+    pathElement.textContent = truncatePath(project.path);
+    pathElement.setAttribute("title", project.path);
+    // 同时更新复制按钮旁边span的title
+    pathElement.parentElement
+      .querySelector("span")
+      .setAttribute("title", project.path);
+  }
+
+  const urlElement = card.querySelector(
+    '.info-line span[title="' +
+      projectsData.find((p) => p.id === project.id).url +
+      '"]'
+  );
+  if (urlElement) {
+    urlElement.textContent = project.url;
+    urlElement.setAttribute("title", project.url);
+  }
+
+  card.querySelector("a.btn-dark").href = project.url;
+
+  // 更新全局数据
+  const index = projectsData.findIndex((p) => p.id == project.id);
+  if (index !== -1) {
+    projectsData[index] = project;
+  }
+}
+
+// --- 主逻辑入口 ---
+
+document.addEventListener("DOMContentLoaded", function () {
+  // 初始化时截断所有路径显示
+  document.querySelectorAll(".path-text").forEach((el) => {
+    const fullPath = el.getAttribute("title");
+    el.textContent = truncatePath(fullPath);
+  });
+
+  // 页面加载后自动检测所有项目状态
+  console.log("开始检测所有项目状态...");
+  projectsData.forEach((project) => {
+    console.log(`检测项目: ${project.name} - ${project.url}`);
+    checkProjectStatus(project.id, project.url);
+  });
+
+  // --- 快捷键支持 ---
+  document.addEventListener("keydown", function (event) {
+    // Ctrl+R 刷新页面
+    if (event.ctrlKey && event.key === "r") {
+      console.log("快捷键: Ctrl+R 刷新页面");
+      location.reload();
+    }
+
+    // ESC 关闭模态框
+    if (event.key === "Escape") {
+      console.log("快捷键: ESC 关闭模态框");
+      const openModals = document.querySelectorAll(".modal.show");
+      openModals.forEach((modal) => {
+        const modalInstance = bootstrap.Modal.getInstance(modal);
+        if (modalInstance) {
+          modalInstance.hide();
+        }
+      });
+    }
+  });
+
+  // --- 快捷键提示功能 ---
+  // 按住Ctrl键2秒显示快捷键提示
+  let ctrlKeyTimer = null;
+  let ctrlPressed = false;
+
+  document.addEventListener("keydown", function (event) {
+    if (event.key === "Control" && !ctrlPressed) {
+      ctrlPressed = true;
+      ctrlKeyTimer = setTimeout(() => {
+        document.getElementById("shortcutHint").style.display = "block";
+        console.log("显示快捷键提示");
+      }, 1000);
+    }
+  });
+
+  document.addEventListener("keyup", function (event) {
+    if (event.key === "Control") {
+      ctrlPressed = false;
+      if (ctrlKeyTimer) {
+        clearTimeout(ctrlKeyTimer);
+      }
+      setTimeout(() => {
+        document.getElementById("shortcutHint").style.display = "none";
+      }, 3000);
+    }
+  });
+
+  // --- 批量操作功能 ---
+  let batchMode = false;
+
+  // 批量选择按钮（如果存在的话）
+  const batchModeBtn = document.getElementById("batchModeBtn");
+  if (batchModeBtn) {
+    batchModeBtn.addEventListener("click", function () {
+      batchMode = true;
+      console.log("进入批量选择模式");
+
+      // 显示所有复选框
+      document.querySelectorAll(".batch-checkbox").forEach((checkbox) => {
+        checkbox.classList.remove("d-none");
+      });
+
+      // 显示批量操作按钮，隐藏批量选择按钮
+      const batchActions = document.getElementById("batchActions");
+      if (batchActions) batchActions.classList.remove("d-none");
+      batchModeBtn.classList.add("d-none");
+    });
+  }
+
+  // 取消批量选择（如果存在的话）
+  const cancelBatchBtn = document.getElementById("cancelBatchBtn");
+  if (cancelBatchBtn) {
+    cancelBatchBtn.addEventListener("click", function () {
+      batchMode = false;
+      console.log("退出批量选择模式");
+
+      // 隐藏所有复选框
+      document.querySelectorAll(".batch-checkbox").forEach((checkbox) => {
+        checkbox.classList.add("d-none");
+      });
+
+      // 清除所有选中状态
+      document.querySelectorAll(".project-checkbox").forEach((checkbox) => {
+        checkbox.checked = false;
+      });
+
+      // 隐藏批量操作按钮，显示批量选择按钮
+      const batchActions = document.getElementById("batchActions");
+      if (batchActions) batchActions.classList.add("d-none");
+      if (batchModeBtn) batchModeBtn.classList.remove("d-none");
+    });
+  }
+
+  // 批量删除（如果存在的话）
+  const batchDeleteBtn = document.getElementById("batchDeleteBtn");
+  if (batchDeleteBtn) {
+    batchDeleteBtn.addEventListener("click", function () {
+      const selectedProjects = [];
+      document
+        .querySelectorAll(".project-checkbox:checked")
+        .forEach((checkbox) => {
+          selectedProjects.push(parseInt(checkbox.dataset.projectId));
+        });
+
+      if (selectedProjects.length === 0) {
+        alert("请先选择要删除的项目");
+        return;
+      }
+
+      console.log("批量删除项目:", selectedProjects);
+
+      if (
+        confirm(
+          `确定要删除选中的 ${selectedProjects.length} 个项目吗？此操作不可撤销。`
+        )
+      ) {
+        // 依次删除选中的项目
+        Promise.all(
+          selectedProjects.map((projectId) =>
+            fetch(`/api/projects/${projectId}`, { method: "DELETE" })
+          )
+        )
+          .then((responses) => {
+            const allSuccess = responses.every((response) => response.ok);
+            if (allSuccess) {
+              console.log("批量删除成功");
+              location.reload();
+            } else {
+              alert("部分项目删除失败，请查看控制台");
+            }
+          })
+          .catch((error) => {
+            console.error("批量删除失败:", error);
+            alert("批量删除失败: " + error.message);
+          });
+      }
+    });
+  }
+
+  // --- 右键菜单功能 ---
+  let contextMenu = null;
+
+  // 创建右键菜单
+  function createContextMenu() {
+    const menu = document.createElement("div");
+    menu.className =
+      "context-menu position-absolute bg-white border rounded shadow-lg p-2";
+    menu.style.zIndex = "9999";
+    menu.style.display = "none";
+    menu.innerHTML = `
+      <div class="context-menu-item px-3 py-2 text-hover-primary cursor-pointer" data-action="edit">
+        <i class="bi bi-pencil-fill me-2"></i>编辑项目
+      </div>
+      <hr class="my-1">
+      <div class="context-menu-item px-3 py-2 text-danger cursor-pointer" data-action="delete">
+        <i class="bi bi-trash-fill me-2"></i>删除项目
+      </div>
+    `;
+    document.body.appendChild(menu);
+    return menu;
+  }
+
+  contextMenu = createContextMenu();
+  let currentContextProject = null;
+
+  // 右键菜单事件处理
+  document.addEventListener("contextmenu", function (event) {
+    const card = event.target.closest(".project-card");
+    if (card) {
+      event.preventDefault();
+      const projectId = parseInt(card.id.split("-").pop(), 10);
+      currentContextProject = projectsData.find((p) => p.id === projectId);
+
+      console.log("显示右键菜单，项目:", currentContextProject.name);
+
+      // 显示菜单
+      contextMenu.style.display = "block";
+      contextMenu.style.left = event.pageX + "px";
+      contextMenu.style.top = event.pageY + "px";
+    }
+  });
+
+  // 点击其他地方隐藏右键菜单
+  document.addEventListener("click", function () {
+    if (contextMenu) {
+      contextMenu.style.display = "none";
+    }
+  });
+
+  // 右键菜单项点击处理
+  contextMenu.addEventListener("click", function (event) {
+    const action = event.target.closest(".context-menu-item")?.dataset.action;
+    if (!action || !currentContextProject) return;
+
+    console.log("右键菜单操作:", action, "项目:", currentContextProject.name);
+
+    switch (action) {
+      case "edit":
+        const modalElement = document.getElementById("editProjectModal");
+        modalElement.querySelector("#editProjectId").value =
+          currentContextProject.id;
+        modalElement.querySelector("#editProjectName").value =
+          currentContextProject.name;
+        modalElement.querySelector("#editProjectUrl").value =
+          currentContextProject.url;
+        modalElement.querySelector("#editProjectDesc").value =
+          currentContextProject.description;
+        modalElement.querySelector("#editProjectPath").value =
+          currentContextProject.path;
+        modalElement.querySelector("#editProjectImage").value = "";
+        new bootstrap.Modal(modalElement).show();
+        break;
+
+      case "delete":
+        if (
+          confirm(
+            `确定要删除项目 "${currentContextProject.name}" 吗？此操作不可撤销。`
+          )
+        ) {
+          fetch(`/api/projects/${currentContextProject.id}`, {
+            method: "DELETE",
+          }).then((response) => {
+            if (response.ok) {
+              location.reload();
+            } else {
+              alert("删除失败");
+            }
+          });
+        }
+        break;
+    }
+
+    contextMenu.style.display = "none";
+  });
+
+  // --- 事件委托核心 ---
+  // 将所有点击事件都绑定在父容器上，提高性能和稳定性。
+  const projectsContainer = document.querySelector(".row.g-5");
+  if (projectsContainer) {
+    projectsContainer.addEventListener("click", function (event) {
+      const target = event.target;
+      const card = target.closest(".project-card");
+      if (!card) return;
+
+      const projectId = parseInt(card.id.split("-").pop(), 10);
+      const project = projectsData.find((p) => p.id === projectId);
+      if (!project) return;
+
+      // 1. 处理删除按钮
+      if (target.closest(".delete-btn")) {
+        event.preventDefault();
+        if (confirm(`确定要删除项目 "${project.name}" 吗？此操作不可撤销。`)) {
+          fetch(`/api/projects/${projectId}`, { method: "DELETE" })
+            .then((response) => {
+              if (response.ok) {
+                location.reload(); // 删除后重载页面，确保数据绝对同步
+              } else {
+                alert("删除失败，请查看控制台获取更多信息。");
+                return response.json().then((err) => console.error(err));
+              }
+            })
+            .catch((err) => console.error("删除请求失败:", err));
+        }
+      }
+
+      // 2. 处理编辑按钮
+      else if (target.closest(".edit-btn")) {
+        event.preventDefault();
+        const modalElement = document.getElementById("editProjectModal");
+        modalElement.querySelector("#editProjectId").value = project.id;
+        modalElement.querySelector("#editProjectName").value = project.name;
+        modalElement.querySelector("#editProjectUrl").value = project.url;
+        modalElement.querySelector("#editProjectDesc").value =
+          project.description;
+        modalElement.querySelector("#editProjectPath").value = project.path;
+        // 清空图片选择
+        modalElement.querySelector("#editProjectImage").value = "";
+        new bootstrap.Modal(modalElement).show();
+      }
+
+      // 3. 处理复制按钮
+      else if (target.closest(".copy-btn")) {
+        event.preventDefault();
+        // 寻找同级的<span>元素来获取要复制的完整内容
+        const textElement = target.closest(".info-line").querySelector("span");
+        const textToCopy = textElement ? textElement.getAttribute("title") : "";
+        if (textToCopy) {
+          copyToClipboard(textToCopy, target.closest(".copy-btn"));
+        }
+      }
+
+      // 4. 处理打开目录按钮
+      else if (target.closest(".open-folder-btn")) {
+        event.preventDefault();
+        fetch(`/api/open-folder/${projectId}`)
+          .then((response) => response.json())
+          .then((data) => {
+            if (!data.success) {
+              alert(`打开目录失败: ${data.message}`);
+            }
+          })
+          .catch((err) => console.error("打开目录请求失败:", err));
+      }
+    });
+  }
+
+  // --- 导入导出功能 ---
+
+  // 导出按钮点击事件
+  document.getElementById("exportBtn").addEventListener("click", function () {
+    console.log("开始导出项目数据...");
+
+    fetch("/api/export")
+      .then((response) => response.json())
+      .then((data) => {
+        if (data.success) {
+          // 创建下载链接
+          const blob = new Blob([JSON.stringify(data.data, null, 2)], {
+            type: "application/json",
+          });
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement("a");
+          a.href = url;
+          a.download = data.filename;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          URL.revokeObjectURL(url);
+
+          console.log("导出成功:", data.filename);
+          alert(`导出成功！文件名: ${data.filename}`);
+        } else {
+          console.error("导出失败:", data.message);
+          alert("导出失败: " + data.message);
+        }
+      })
+      .catch((error) => {
+        console.error("导出请求失败:", error);
+        alert("导出失败，请检查网络连接");
+      });
+  });
+
+  // 导入按钮点击事件
+  document.getElementById("importBtn").addEventListener("click", function () {
+    console.log("打开导入对话框");
+    const modal = new bootstrap.Modal(document.getElementById("importModal"));
+    modal.show();
+  });
+
+  // 确认导入按钮点击事件
+  document
+    .getElementById("confirmImportBtn")
+    .addEventListener("click", function () {
+      const fileInput = document.getElementById("importFileInput");
+      const replaceCheckbox = document.getElementById("replaceExistingData");
+
+      if (!fileInput.files || fileInput.files.length === 0) {
+        alert("请选择要导入的JSON文件");
+        return;
+      }
+
+      const file = fileInput.files[0];
+      const reader = new FileReader();
+
+      reader.onload = function (e) {
+        try {
+          const importData = JSON.parse(e.target.result);
+          console.log("解析导入文件成功");
+
+          // 验证数据格式
+          let projects = [];
+          if (importData.projects && Array.isArray(importData.projects)) {
+            projects = importData.projects;
+          } else if (Array.isArray(importData)) {
+            projects = importData;
+          } else {
+            throw new Error("无效的数据格式");
+          }
+
+          if (projects.length === 0) {
+            alert("导入文件中没有找到项目数据");
+            return;
+          }
+
+          console.log(`准备导入 ${projects.length} 个项目`);
+
+          // 发送导入请求
+          fetch("/api/import", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              projects: projects,
+              replace_existing: replaceCheckbox.checked,
+            }),
+          })
+            .then((response) => response.json())
+            .then((data) => {
+              if (data.success) {
+                console.log("导入成功:", data.message);
+                alert(data.message);
+
+                // 关闭模态框并刷新页面
+                const modal = bootstrap.Modal.getInstance(
+                  document.getElementById("importModal")
+                );
+                modal.hide();
+                location.reload();
+              } else {
+                console.error("导入失败:", data.message);
+                alert("导入失败: " + data.message);
+              }
+            })
+            .catch((error) => {
+              console.error("导入请求失败:", error);
+              alert("导入失败，请检查网络连接");
+            });
+        } catch (error) {
+          console.error("解析JSON文件失败:", error);
+          alert("文件格式错误，请选择有效的JSON文件");
+        }
+      };
+
+      reader.readAsText(file);
+    });
+
+  // --- 表单提交逻辑 ---
+
+  // 添加项目表单
+  const addProjectForm = document.getElementById("addProjectForm");
+  if (addProjectForm) {
+    addProjectForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const data = Object.fromEntries(formData.entries());
+      const imageFile = formData.get("image");
+
+      console.log("正在添加新项目...");
+
+      // 先创建项目
+      fetch("/api/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          url: data.url,
+          description: data.description,
+          path: data.path,
+        }),
+      })
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error("添加项目失败!");
+        })
+        .then((newProject) => {
+          console.log("项目创建成功，ID:", newProject.id);
+
+          // 如果有图片文件，则上传图片
+          if (imageFile && imageFile.size > 0) {
+            console.log("正在上传项目图片...");
+            const imageFormData = new FormData();
+            imageFormData.append("image", imageFile);
+
+            return fetch(`/api/upload-image/${newProject.id}`, {
+              method: "POST",
+              body: imageFormData,
+            })
+              .then((res) => res.json())
+              .then((imageResult) => {
+                if (imageResult.success) {
+                  console.log("图片上传成功");
+                } else {
+                  console.log("图片上传失败:", imageResult.message);
+                  alert("图片上传失败: " + imageResult.message);
+                }
+                return newProject;
+              })
+              .catch((error) => {
+                console.error("图片上传请求失败:", error);
+                alert("图片上传失败，请检查网络连接");
+                return newProject;
+              });
+          }
+          return newProject;
+        })
+        .then(() => {
+          console.log("项目添加完成，刷新页面");
+          location.reload();
+        })
+        .catch((error) => {
+          console.error("添加项目失败:", error);
+          alert("添加失败: " + error.message);
+        });
+    });
+  }
+
+  // 编辑项目表单
+  const editProjectForm = document.getElementById("editProjectForm");
+  if (editProjectForm) {
+    editProjectForm.addEventListener("submit", function (event) {
+      event.preventDefault();
+      const formData = new FormData(event.target);
+      const data = Object.fromEntries(formData.entries());
+      const projectId = data.id;
+      const imageFile = formData.get("image");
+
+      console.log(`正在更新项目 ${projectId}`);
+
+      // 先更新项目基本信息
+      fetch(`/api/projects/${projectId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: data.name,
+          url: data.url,
+          description: data.description,
+          path: data.path,
+        }),
+      })
+        .then((res) => {
+          if (res.ok) return res.json();
+          throw new Error("更新失败!");
+        })
+        .then((updatedProject) => {
+          console.log("项目基本信息更新成功");
+
+          // 如果有图片文件，则上传图片
+          if (imageFile && imageFile.size > 0) {
+            console.log("正在上传图片...");
+            const imageFormData = new FormData();
+            imageFormData.append("image", imageFile);
+
+            return fetch(`/api/upload-image/${projectId}`, {
+              method: "POST",
+              body: imageFormData,
+            })
+              .then((res) => res.json())
+              .then((imageResult) => {
+                if (imageResult.success) {
+                  console.log("图片上传成功");
+                  updatedProject.image = imageResult.image_url;
+                } else {
+                  console.log("图片上传失败:", imageResult.message);
+                  alert("图片上传失败: " + imageResult.message);
+                }
+                return updatedProject;
+              })
+              .catch((error) => {
+                console.error("图片上传请求失败:", error);
+                alert("图片上传失败，请检查网络连接");
+                return updatedProject;
+              });
+          }
+          return updatedProject;
+        })
+        .then((finalProject) => {
+          updateCardInDOM(finalProject);
+          const modalInstance = bootstrap.Modal.getInstance(
+            document.getElementById("editProjectModal")
+          );
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+          // 刷新页面以显示新图片
+          location.reload();
+        })
+        .catch((error) => {
+          console.error("更新失败:", error);
+          alert(error.message);
+        });
+    });
+  }
+});
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\static\uploads\4_9a0bb795_shark.jpg
+内容: [无法作为文本读取，可能是二进制文件]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\static\uploads\5_3fb644cb_SAAM-1967.59.931_1.jpg
+内容: [无法作为文本读取，可能是二进制文件]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\static\uploads\6_8c9204cc_Kopiec_9.jpg
+内容: [无法作为文本读取，可能是二进制文件]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\templates\index.html
+内容:
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>我的小项目</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css"
+    />
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <div class="container-fluid main-container py-5">
+      <div class="d-flex justify-content-between align-items-center mb-5">
+        <h1 class="display-4 fw-bold">start</h1>
+        <div class="d-flex gap-3">
+          <button
+            class="btn btn-primary btn-lg rounded-circle shadow-lg"
+            style="width: 60px; height: 60px"
+            data-bs-toggle="modal"
+            data-bs-target="#addProjectModal"
+          >
+            <i class="bi bi-plus-lg"></i>
+          </button>
+          <div class="dropdown">
+            <button
+              class="btn btn-outline-primary btn-lg rounded-circle shadow-lg"
+              style="width: 60px; height: 60px"
+              type="button"
+              data-bs-toggle="dropdown"
+              aria-expanded="false"
+            >
+              <i class="bi bi-three-dots"></i>
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+              <li>
+                <button class="dropdown-item" type="button" id="importBtn">
+                  <i class="bi bi-upload me-2"></i>导入数据
+                </button>
+              </li>
+              <li>
+                <button class="dropdown-item" type="button" id="exportBtn">
+                  <i class="bi bi-download me-2"></i>导出数据
+                </button>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
+      <div class="row g-5 row-cols-1 row-cols-md-2 row-cols-xl-4">
+        {% for project in projects %}
+        <div class="col d-flex">
+          <div
+            class="card project-card w-100"
+            id="project-card-{{ project.id }}"
+          >
+            <div class="card-body d-flex flex-column">
+              <div
+                class="batch-checkbox d-none position-absolute"
+                style="top: 10px; left: 10px; z-index: 10"
+              >
+                <input
+                  type="checkbox"
+                  class="form-check-input project-checkbox"
+                  data-project-id="{{ project.id }}"
+                />
+              </div>
+              <div
+                class="d-flex justify-content-between align-items-start mb-3"
+              >
+                <div class="d-flex align-items-center">
+                  <span
+                    class="status-indicator status-checking"
+                    id="status-{{ project.id }}"
+                  ></span>
+                  <h4 class="card-title mb-0 me-5">{{ project.name }}</h4>
+                </div>
+                <div class="dropdown card-actions-dropdown">
+                  <button
+                    class="btn btn-sm btn-outline-secondary"
+                    type="button"
+                    data-bs-toggle="dropdown"
+                  >
+                    <i class="bi bi-three-dots-vertical"></i>
+                  </button>
+                  <ul class="dropdown-menu dropdown-menu-end">
+                    <li>
+                      <button class="dropdown-item edit-btn" type="button">
+                        <i class="bi bi-pencil-fill me-2"></i>编辑
+                      </button>
+                    </li>
+                    <li><hr class="dropdown-divider" /></li>
+                    <li>
+                      <button
+                        class="dropdown-item text-danger delete-btn"
+                        type="button"
+                      >
+                        <i class="bi bi-trash-fill me-2"></i>删除
+                      </button>
+                    </li>
+                  </ul>
+                </div>
+              </div>
+              <div class="d-flex align-items-center mb-3">
+                <div class="project-icon me-3" id="icon-{{ project.id }}">
+                  {% if project.get('image') %}
+                  <img
+                    src="{{ project.image }}"
+                    alt="{{ project.name }}"
+                    class="project-image"
+                  />
+                  {% else %}
+                  <div
+                    class="icon-placeholder"
+                    style="background-color: hsl({{ (project.id * 137.5) % 360 }}, 45%, 55%);"
+                  >
+                    {{ project.name[0] | upper }}
+                  </div>
+                  {% endif %}
+                </div>
+                <p class="card-text text-muted mb-0">
+                  {{ project.description }}
+                </p>
+              </div>
+              <div class="info-container">
+                {% if project.path %}
+                <div class="info-line">
+                  <i class="bi bi-folder me-2"></i
+                  ><span class="path-text" title="{{ project.path }}"
+                    >{{ project.path }}</span
+                  ><button class="btn btn-sm btn-outline-secondary copy-btn">
+                    <i class="bi bi-clipboard me-1"></i>复制
+                  </button>
+                </div>
+                {% endif %}
+                <div class="info-line">
+                  <i class="bi bi-link-45deg me-2"></i
+                  ><span title="{{ project.url }}">{{ project.url }}</span
+                  ><button class="btn btn-sm btn-outline-secondary copy-btn">
+                    <i class="bi bi-clipboard me-1"></i>复制
+                  </button>
+                </div>
+              </div>
+              <div class="mt-auto pt-3">
+                <div class="btn-group w-100" role="group">
+                  <button
+                    class="btn btn-outline-secondary open-folder-btn"
+                    data-id="{{ project.id }}"
+                  >
+                    <i class="bi bi-folder2-open me-1"></i>打开目录</button
+                  ><a
+                    href="{{ project.url }}"
+                    target="_blank"
+                    class="btn btn-dark"
+                    ><i class="bi bi-box-arrow-up-right me-1"></i>访问应用</a
+                  >
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <hr class="my-5" />
+      <div class="mb-5">
+        <h2 class="display-6 fw-bold">探索发现</h2>
+        <div class="p-5 mt-4 bg-light rounded-3 text-center">
+          <p class="lead">这里是为你准备的探索空间，敬请期待...</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- 快捷键提示 -->
+    <div class="shortcut-hint" id="shortcutHint">
+      <div><strong>快捷键:</strong></div>
+      <div>Ctrl+R - 刷新页面</div>
+      <div>ESC - 关闭弹窗</div>
+      <div>右键 - 快捷菜单</div>
+    </div>
+
+    <!-- 模态框HTML -->
+    <div class="modal fade" id="addProjectModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">添加新项目</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="addProjectForm">
+              <div class="mb-3">
+                <label class="form-label">项目名称</label
+                ><input type="text" class="form-control" name="name" required />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目URL</label
+                ><input
+                  type="url"
+                  class="form-control"
+                  name="url"
+                  placeholder="http://127.0.0.1:3000"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目描述</label
+                ><textarea
+                  class="form-control"
+                  name="description"
+                  rows="2"
+                ></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">本地文件夹路径 (可选)</label
+                ><input type="text" class="form-control" name="path" />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目图片 (可选)</label>
+                <input
+                  type="file"
+                  class="form-control"
+                  name="image"
+                  id="addProjectImage"
+                  accept="image/*"
+                />
+                <small class="form-text text-muted"
+                  >支持 JPG, PNG, GIF 格式</small
+                >
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              关闭</button
+            ><button
+              type="submit"
+              class="btn btn-primary"
+              form="addProjectForm"
+            >
+              保存
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="modal fade" id="editProjectModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">编辑项目</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <form id="editProjectForm">
+              <input type="hidden" name="id" id="editProjectId" />
+              <div class="mb-3">
+                <label class="form-label">项目名称</label
+                ><input
+                  type="text"
+                  class="form-control"
+                  name="name"
+                  id="editProjectName"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目URL</label
+                ><input
+                  type="url"
+                  class="form-control"
+                  name="url"
+                  id="editProjectUrl"
+                  required
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目描述</label
+                ><textarea
+                  class="form-control"
+                  name="description"
+                  id="editProjectDesc"
+                  rows="2"
+                ></textarea>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">本地文件夹路径 (可选)</label
+                ><input
+                  type="text"
+                  class="form-control"
+                  name="path"
+                  id="editProjectPath"
+                />
+              </div>
+              <div class="mb-3">
+                <label class="form-label">项目图片 (可选)</label>
+                <input
+                  type="file"
+                  class="form-control"
+                  name="image"
+                  id="editProjectImage"
+                  accept="image/*"
+                />
+                <small class="form-text text-muted"
+                  >支持 JPG, PNG, GIF 格式</small
+                >
+              </div>
+            </form>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              关闭</button
+            ><button
+              type="submit"
+              class="btn btn-primary"
+              form="editProjectForm"
+            >
+              保存更改
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 导入模态框 -->
+    <div class="modal fade" id="importModal" tabindex="-1">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">导入项目数据</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+            ></button>
+          </div>
+          <div class="modal-body">
+            <div class="mb-3">
+              <label class="form-label">选择JSON文件</label>
+              <input
+                type="file"
+                class="form-control"
+                id="importFileInput"
+                accept=".json"
+              />
+              <small class="form-text text-muted">
+                请选择之前导出的JSON格式项目数据文件
+              </small>
+            </div>
+            <div class="mb-3">
+              <div class="form-check">
+                <input
+                  class="form-check-input"
+                  type="checkbox"
+                  id="replaceExistingData"
+                />
+                <label class="form-check-label" for="replaceExistingData">
+                  替换现有数据（勾选后将清空现有项目数据）
+                </label>
+              </div>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              取消
+            </button>
+            <button type="button" class="btn btn-primary" id="confirmImportBtn">
+              导入
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- 隐藏的文件输入用于导出 -->
+    <input
+      type="file"
+      id="hiddenFileInput"
+      style="display: none"
+      accept=".json"
+    />
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+      // 【关键修复】：直接使用 tojson 过滤器将 Python 对象转换为 JavaScript 对象。
+      // 这样可以确保数据格式正确，并且不会在解析时出错。
+      let projectsData = {{ projects|tojson|safe }};
+    </script>
+    <script src="{{ url_for('static', filename='js/script.js') }}"></script>
+  </body>
+</html>
+
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\效果图\a3.png
+内容: [无法作为文本读取，可能是二进制文件]
+
+完整的路径: C:\Users\Administrator\Work\flask_port_app\效果图\a4.png
+内容: [无法作为文本读取，可能是二进制文件]

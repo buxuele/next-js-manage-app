@@ -104,162 +104,200 @@ export default function ProjectCard({
     return name.charAt(0).toUpperCase();
   };
 
+  // 根据项目ID生成颜色
+  const getProjectColor = (id: string) => {
+    const colors = [
+      "#8B5CF6", // 紫色
+      "#06B6D4", // 青色
+      "#10B981", // 绿色
+      "#F59E0B", // 黄色
+      "#EF4444", // 红色
+      "#3B82F6", // 蓝色
+      "#F97316", // 橙色
+      "#84CC16", // 青绿色
+    ];
+    const index = parseInt(id) % colors.length;
+    return colors[index];
+  };
+
   const isRunning = status?.isRunning || false;
   const projectUrl = `http://localhost:${project.port || 3000}`;
+  const projectColor = getProjectColor(project.id);
 
   return (
     <div
       style={{
-        background: "linear-gradient(145deg, #ffecd2 0%, #fcb69f 100%)",
-        border: "2px solid #e67e22",
-        borderRadius: "12px",
-        boxShadow: "0 4px 15px rgba(0,0,0,0.1)",
+        background: "rgba(255, 255, 255, 0.95)",
+        borderRadius: "16px",
+        boxShadow: "0 8px 32px rgba(0, 0, 0, 0.1)",
+        backdropFilter: "blur(10px)",
+        border: "1px solid rgba(255, 255, 255, 0.2)",
         transition: "all 0.3s ease",
-        height: "100%",
+        height: "280px",
+        overflow: "hidden",
       }}
       className="project-card"
       onMouseEnter={(e) => {
-        e.currentTarget.style.transform = "translateY(-2px)";
-        e.currentTarget.style.boxShadow = "0 6px 20px rgba(0,0,0,0.15)";
+        e.currentTarget.style.transform = "translateY(-4px)";
+        e.currentTarget.style.boxShadow = "0 12px 40px rgba(0, 0, 0, 0.15)";
       }}
       onMouseLeave={(e) => {
         e.currentTarget.style.transform = "translateY(0)";
-        e.currentTarget.style.boxShadow = "0 4px 15px rgba(0,0,0,0.1)";
+        e.currentTarget.style.boxShadow = "0 8px 32px rgba(0, 0, 0, 0.1)";
       }}
     >
-      <div className="p-3 d-flex flex-column h-100">
-        {/* 项目图标和状态 */}
-        <div className="d-flex align-items-center mb-3">
-          <div className="me-3">
-            {project.icon ? (
-              <Image
-                src={project.icon}
-                alt={`${project.name} icon`}
-                width={48}
-                height={48}
-                className="rounded"
-                style={{ objectFit: "cover" }}
-              />
-            ) : (
-              <div
+      {/* 项目图标和名称 */}
+      <div className="p-4 text-center">
+        <div className="mb-3">
+          {project.icon ? (
+            <Image
+              src={project.icon}
+              alt={`${project.name} icon`}
+              width={60}
+              height={60}
+              className="rounded-circle"
+              style={{ objectFit: "cover" }}
+            />
+          ) : (
+            <div
+              style={{
+                width: "60px",
+                height: "60px",
+                background: projectColor,
+                borderRadius: "50%",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "white",
+                fontSize: "24px",
+                fontWeight: "bold",
+                margin: "0 auto",
+                boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+              }}
+            >
+              {getProjectInitial(project.name)}
+            </div>
+          )}
+        </div>
+
+        <h6 className="fw-bold text-dark mb-2" style={{ fontSize: "16px" }}>
+          {project.name}
+        </h6>
+
+        <p
+          className="text-muted small mb-3"
+          style={{ fontSize: "12px", height: "36px", overflow: "hidden" }}
+        >
+          {project.description || "暂无描述"}
+        </p>
+      </div>
+
+      {/* 底部按钮区域 */}
+      <div className="mt-auto">
+        <div className="row g-0">
+          {/* 启动按钮 */}
+          <div className="col-6">
+            {isRunning ? (
+              <button
+                className="btn w-100 rounded-0"
+                onClick={handleStop}
+                disabled={loading.stop}
                 style={{
-                  width: "48px",
-                  height: "48px",
-                  background:
-                    "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-                  borderRadius: "8px",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
+                  background: "#DC3545",
                   color: "white",
-                  fontSize: "20px",
-                  fontWeight: "bold",
-                  border: "2px solid #fff",
+                  fontSize: "12px",
+                  padding: "12px 8px",
+                  fontWeight: "500",
+                  border: "none",
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
                 }}
               >
-                {getProjectInitial(project.name)}
-              </div>
+                {loading.stop ? "停止中..." : "停止"}
+              </button>
+            ) : (
+              <button
+                className="btn w-100 rounded-0"
+                onClick={handleStart}
+                disabled={loading.start}
+                style={{
+                  background: "#28A745",
+                  color: "white",
+                  fontSize: "12px",
+                  padding: "12px 8px",
+                  fontWeight: "500",
+                  border: "none",
+                  borderTop: "1px solid rgba(255,255,255,0.1)",
+                }}
+              >
+                {loading.start ? "启动中..." : "启动"}
+              </button>
             )}
           </div>
-          <div className="flex-grow-1">
-            <div className="d-flex justify-content-between align-items-start">
-              <h6 className="mb-1 fw-bold text-dark">{project.name}</h6>
-              <span
-                className={`badge ${isRunning ? "bg-success" : "bg-secondary"}`}
-                style={{ fontSize: "10px" }}
-              >
-                {isRunning ? "运行中" : "已停止"}
-              </span>
-            </div>
+
+          {/* 访问网址按钮 */}
+          <div className="col-6">
+            <button
+              className="btn w-100 rounded-0"
+              onClick={() => onOpenUrl(projectUrl)}
+              disabled={!isRunning}
+              style={{
+                background: isRunning ? "#007BFF" : "#6C757D",
+                color: "white",
+                fontSize: "12px",
+                padding: "12px 8px",
+                fontWeight: "500",
+                border: "none",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
+                borderLeft: "1px solid rgba(255,255,255,0.1)",
+              }}
+            >
+              访问网址
+            </button>
           </div>
         </div>
 
-        {/* 项目描述 */}
-        <div className="mb-3">
-          <p
-            className="text-muted small mb-2"
-            style={{ fontSize: "12px", lineHeight: "1.4" }}
-          >
-            {project.description || "暂无描述"}
-          </p>
-          <div className="small text-muted">
-            <div style={{ fontSize: "11px" }}>
-              <strong>路径:</strong>{" "}
-              {project.path.length > 30
-                ? `...${project.path.slice(-30)}`
-                : project.path}
-            </div>
-            <div style={{ fontSize: "11px" }}>
-              <strong>端口:</strong> {project.port || 3000}
-            </div>
-          </div>
-        </div>
-
-        {/* 操作按钮 */}
-        <div className="mt-auto">
-          <div className="row g-1 mb-2">
-            {/* 启动/停止按钮 */}
-            <div className="col-6">
-              {isRunning ? (
-                <button
-                  className="btn btn-danger btn-sm w-100"
-                  onClick={handleStop}
-                  disabled={loading.stop}
-                  style={{ fontSize: "11px", padding: "4px 8px" }}
-                >
-                  {loading.stop ? "停止中..." : "停止"}
-                </button>
-              ) : (
-                <button
-                  className="btn btn-success btn-sm w-100"
-                  onClick={handleStart}
-                  disabled={loading.start}
-                  style={{ fontSize: "11px", padding: "4px 8px" }}
-                >
-                  {loading.start ? "启动中..." : "启动"}
-                </button>
-              )}
-            </div>
-
-            {/* 访问网址按钮 */}
-            <div className="col-6">
-              <button
-                className="btn btn-primary btn-sm w-100"
-                onClick={() => onOpenUrl(projectUrl)}
-                disabled={!isRunning}
-                title={isRunning ? "在浏览器中打开" : "项目未运行"}
-                style={{ fontSize: "11px", padding: "4px 8px" }}
-              >
-                访问网址
-              </button>
-            </div>
+        <div className="row g-0">
+          {/* 打开目录按钮 */}
+          <div className="col-6">
+            <button
+              className="btn w-100 rounded-0"
+              onClick={handleOpenDirectory}
+              disabled={loading.openDir}
+              style={{
+                background: "#17A2B8",
+                color: "white",
+                fontSize: "12px",
+                padding: "12px 8px",
+                fontWeight: "500",
+                border: "none",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
+                borderBottomLeftRadius: "16px",
+              }}
+            >
+              {loading.openDir ? "打开中..." : "打开目录"}
+            </button>
           </div>
 
-          <div className="row g-1">
-            {/* 打开目录按钮 */}
-            <div className="col-6">
-              <button
-                className="btn btn-info btn-sm w-100"
-                onClick={handleOpenDirectory}
-                disabled={loading.openDir}
-                style={{ fontSize: "11px", padding: "4px 8px" }}
-              >
-                {loading.openDir ? "打开中..." : "打开目录"}
-              </button>
-            </div>
-
-            {/* 删除按钮 */}
-            <div className="col-6">
-              <button
-                className="btn btn-warning btn-sm w-100"
-                onClick={handleDelete}
-                disabled={loading.delete || isRunning}
-                title={isRunning ? "请先停止项目" : "删除项目"}
-                style={{ fontSize: "11px", padding: "4px 8px" }}
-              >
-                {loading.delete ? "删除中..." : "删除"}
-              </button>
-            </div>
+          {/* 删除按钮 */}
+          <div className="col-6">
+            <button
+              className="btn w-100 rounded-0"
+              onClick={handleDelete}
+              disabled={loading.delete || isRunning}
+              style={{
+                background: isRunning ? "#6C757D" : "#FFC107",
+                color: isRunning ? "white" : "#212529",
+                fontSize: "12px",
+                padding: "12px 8px",
+                fontWeight: "500",
+                border: "none",
+                borderTop: "1px solid rgba(255,255,255,0.1)",
+                borderLeft: "1px solid rgba(255,255,255,0.1)",
+                borderBottomRightRadius: "16px",
+              }}
+            >
+              {loading.delete ? "删除中..." : "删除"}
+            </button>
           </div>
         </div>
       </div>

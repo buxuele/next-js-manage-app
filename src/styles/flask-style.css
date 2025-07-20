@@ -1,0 +1,235 @@
+/* Flask 项目风格的全局样式 */
+
+/* 整体页面样式 */
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Roboto", "Oxygen",
+    "Ubuntu", "Cantarell", sans-serif;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+}
+
+/* 项目卡片悬停效果 */
+.project-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.project-card:hover {
+  transform: translateY(-4px) scale(1.02);
+}
+
+/* 按钮悬停效果 */
+.project-card button {
+  transition: all 0.2s ease;
+}
+
+.project-card button:hover:not(:disabled) {
+  transform: translateY(-1px);
+  filter: brightness(1.1);
+}
+
+.project-card button:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+/* 项目图标动画 */
+.project-icon {
+  transition: all 0.3s ease;
+}
+
+.project-card:hover .project-icon {
+  transform: scale(1.1);
+}
+
+/* 自定义滚动条 */
+::-webkit-scrollbar {
+  width: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* 模态框样式优化 */
+.modal-content {
+  border-radius: 16px;
+  border: none;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+}
+
+.modal-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 16px 16px 0 0;
+}
+
+.modal-footer {
+  border-top: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 0 0 16px 16px;
+}
+
+/* 表单控件样式 */
+.form-control {
+  border-radius: 8px;
+  border: 2px solid #e9ecef;
+  transition: all 0.2s ease;
+}
+
+.form-control:focus {
+  border-color: #667eea;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
+}
+
+/* 下拉菜单样式 */
+.dropdown-menu {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.95);
+}
+
+.dropdown-item {
+  border-radius: 8px;
+  margin: 2px 8px;
+  transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+  background-color: rgba(102, 126, 234, 0.1);
+  color: #667eea;
+}
+
+/* 响应式优化 */
+@media (max-width: 768px) {
+  .project-card {
+    height: auto !important;
+    min-height: 260px;
+  }
+
+  .project-card .p-4 {
+    padding: 1rem !important;
+  }
+
+  .project-card button {
+    font-size: 11px !important;
+    padding: 10px 6px !important;
+  }
+}
+
+@media (max-width: 576px) {
+  .project-card {
+    min-height: 240px;
+  }
+
+  .project-card h6 {
+    font-size: 14px !important;
+  }
+
+  .project-card p {
+    font-size: 11px !important;
+    height: 30px !important;
+  }
+}
+
+/* 加载动画 */
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+.loading-pulse {
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+/* 成功/错误状态指示器 */
+.status-indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  display: inline-block;
+  margin-right: 8px;
+}
+
+.status-success {
+  background-color: #28a745;
+  box-shadow: 0 0 8px rgba(40, 167, 69, 0.6);
+}
+
+.status-error {
+  background-color: #dc3545;
+  box-shadow: 0 0 8px rgba(220, 53, 69, 0.6);
+}
+
+.status-warning {
+  background-color: #ffc107;
+  box-shadow: 0 0 8px rgba(255, 193, 7, 0.6);
+}
+
+/* 工具提示样式 */
+.tooltip {
+  font-size: 12px;
+}
+
+.tooltip-inner {
+  background-color: rgba(0, 0, 0, 0.9);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+/* 按钮组样式优化 */
+.btn-group .btn {
+  border-radius: 20px !important;
+  margin-right: 8px;
+}
+
+.btn-group .btn:last-child {
+  margin-right: 0;
+}
+
+/* 头部标题样式 */
+.page-title {
+  background: linear-gradient(45deg, #fff, rgba(255, 255, 255, 0.8));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* 空状态样式 */
+.empty-state {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Toast 通知样式 */
+.toast {
+  border-radius: 12px;
+  border: none;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(10px);
+}
+
+.toast-header {
+  border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px 12px 0 0;
+}
+
+.toast-body {
+  border-radius: 0 0 12px 12px;
+}

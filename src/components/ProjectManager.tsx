@@ -263,8 +263,15 @@ export default function ProjectManager() {
         {/* 头部工具栏 */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h2 className="mb-1 text-white">端口管理</h2>
-            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+            <h2
+              className="mb-1 text-white"
+              style={{ fontSize: "28px", fontWeight: "600" }}
+            >
+              端口管理
+            </h2>
+            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+              管理您的开发端口和项目
+            </p>
           </div>
         </div>
 
@@ -304,8 +311,15 @@ export default function ProjectManager() {
         {/* 头部工具栏 */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h2 className="mb-1 text-white">端口管理</h2>
-            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+            <h2
+              className="mb-1 text-white"
+              style={{ fontSize: "28px", fontWeight: "600" }}
+            >
+              端口管理
+            </h2>
+            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+              管理您的开发端口和项目
+            </p>
           </div>
         </div>
 
@@ -370,13 +384,24 @@ export default function ProjectManager() {
         {/* 头部工具栏 */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h2 className="mb-1 text-white">端口管理</h2>
-            <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+            <h2
+              className="mb-1 text-white"
+              style={{ fontSize: "28px", fontWeight: "600" }}
+            >
+              端口管理
+            </h2>
+            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+              管理您的开发端口和项目
+            </p>
           </div>
-          <div className="btn-group" role="group">
+          <div className="d-flex gap-3">
             <button
-              className="btn btn-light"
+              className="btn btn-light rounded-pill px-4"
               onClick={() => setShowAddModal(true)}
+              style={{
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                fontWeight: "500",
+              }}
             >
               <i className="bi bi-plus-circle me-2"></i>
               添加项目
@@ -456,31 +481,50 @@ export default function ProjectManager() {
       {/* 头部工具栏 */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2 className="mb-1 text-white">端口管理</h2>
-          <p className="text-white-50 mb-0">管理您的开发端口和项目</p>
+          <h2
+            className="mb-1 text-white"
+            style={{ fontSize: "28px", fontWeight: "600" }}
+          >
+            端口管理
+          </h2>
+          <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
+            管理您的开发端口和项目
+          </p>
         </div>
-        <div className="btn-group" role="group">
+        <div className="d-flex gap-3">
           <button
-            className="btn btn-light"
+            className="btn btn-light rounded-pill px-4"
             onClick={() => setShowAddModal(true)}
+            style={{
+              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+              fontWeight: "500",
+            }}
           >
             <i className="bi bi-plus-circle me-2"></i>
             添加项目
           </button>
-          <div className="btn-group" role="group">
+          <div className="dropdown">
             <button
               type="button"
-              className="btn btn-outline-light dropdown-toggle"
+              className="btn btn-outline-light rounded-pill px-4 dropdown-toggle"
               data-bs-toggle="dropdown"
               aria-expanded="false"
+              style={{
+                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+                fontWeight: "500",
+                border: "2px solid rgba(255, 255, 255, 0.3)",
+              }}
             >
               <i className="bi bi-three-dots me-1"></i>
               更多
             </button>
-            <ul className="dropdown-menu">
+            <ul
+              className="dropdown-menu dropdown-menu-end shadow-lg border-0"
+              style={{ borderRadius: "12px" }}
+            >
               <li>
                 <button
-                  className="dropdown-item"
+                  className="dropdown-item py-2"
                   onClick={handleExportProjects}
                   disabled={projects.length === 0}
                 >
@@ -489,7 +533,13 @@ export default function ProjectManager() {
                 </button>
               </li>
               <li>
-                <label className="dropdown-item" style={{ cursor: "pointer" }}>
+                <hr className="dropdown-divider" />
+              </li>
+              <li>
+                <label
+                  className="dropdown-item py-2"
+                  style={{ cursor: "pointer" }}
+                >
                   <i className="bi bi-upload me-2"></i>
                   导入配置
                   <input
@@ -505,10 +555,10 @@ export default function ProjectManager() {
         </div>
       </div>
 
-      {/* 项目网格 - 4列布局 */}
-      <div className="row g-3">
+      {/* 项目网格 - 与Flask项目一致的布局 */}
+      <div className="row g-4">
         {projects.map((project) => (
-          <div key={project.id} className="col-12 col-sm-6 col-md-4 col-lg-3">
+          <div key={project.id} className="col-12 col-sm-6 col-md-4 col-xl-3">
             <ProjectCard
               project={project}
               onStart={handleStartProject}

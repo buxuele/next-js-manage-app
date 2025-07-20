@@ -3,6 +3,7 @@ import ErrorBoundary from "@/components/ErrorBoundary";
 import { SessionProvider } from "@/components/SessionProvider";
 import Navigation from "@/components/Navigation";
 import "./globals.css";
+import "../styles/flask-style.css";
 
 export const metadata: Metadata = {
   title: "我的端口中心",
