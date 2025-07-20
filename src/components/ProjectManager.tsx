@@ -419,7 +419,7 @@ export default function ProjectManager() {
             </div>
             <h4 className="text-white mb-3">暂无项目</h4>
             <p className="text-white-50 mb-4">
-              还没有添加任何开发项目。点击上方的"添加项目"按钮开始管理您的端口！
+              还没有添加任何开发项目。点击上方的&ldquo;添加项目&rdquo;按钮开始管理您的端口！
             </p>
             <button
               className="btn btn-light btn-lg"
