@@ -55,7 +55,6 @@ export default function ProjectManager() {
         showError("启动失败", data.error || "未知错误");
       } else {
         showSuccess("启动成功", "项目已成功启动");
-        // 刷新项目列表
         await fetchProjects();
       }
     } catch (error) {
@@ -77,7 +76,6 @@ export default function ProjectManager() {
         showError("停止失败", data.error || "未知错误");
       } else {
         showSuccess("停止成功", "项目已成功停止");
-        // 刷新项目列表
         await fetchProjects();
       }
     } catch (error) {
@@ -122,7 +120,6 @@ export default function ProjectManager() {
       const data: ApiResponse = await response.json();
 
       if (data.success) {
-        // 从本地状态中移除项目
         setProjects((prev) => prev.filter((p) => p.id !== projectId));
         showSuccess("删除成功", "项目已成功删除");
       } else {
@@ -184,7 +181,6 @@ export default function ProjectManager() {
         const content = e.target?.result as string;
         const importData = JSON.parse(content);
 
-        // 验证导入数据格式
         if (!importData.projects || !Array.isArray(importData.projects)) {
           showError("导入失败", "无效的文件格式");
           return;
@@ -193,7 +189,6 @@ export default function ProjectManager() {
         let successCount = 0;
         let errorCount = 0;
 
-        // 逐个导入项目
         for (const projectData of importData.projects) {
           try {
             if (!projectData.name || !projectData.path) {
@@ -225,10 +220,8 @@ export default function ProjectManager() {
           }
         }
 
-        // 刷新项目列表
         await fetchProjects();
 
-        // 显示导入结果
         if (successCount > 0) {
           showSuccess(
             "导入完成",
@@ -246,7 +239,6 @@ export default function ProjectManager() {
     };
 
     reader.readAsText(file);
-    // 清空文件输入，允许重复选择同一文件
     event.target.value = "";
   };
 
@@ -254,44 +246,15 @@ export default function ProjectManager() {
   if (loading) {
     return (
       <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "20px",
-        }}
+        style={{ minHeight: "100vh", background: "#fdfcf8", padding: "20px" }}
       >
-        {/* 头部工具栏 */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2
-              className="mb-1 text-white"
-              style={{ fontSize: "28px", fontWeight: "600" }}
-            >
-              端口管理
-            </h2>
-            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
-              管理您的开发端口和项目
-            </p>
-          </div>
-        </div>
-
-        {/* 加载状态内容 */}
         <div
           className="d-flex justify-content-center align-items-center"
           style={{ minHeight: "400px" }}
         >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "20px",
-              padding: "40px",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              textAlign: "center",
-            }}
-          >
+          <div style={{ textAlign: "center" }}>
             <LoadingSpinner />
-            <p className="text-white mt-3 mb-0">正在加载项目...</p>
+            <p className="text-muted mt-3 mb-0">正在加载项目...</p>
           </div>
         </div>
       </div>
@@ -302,66 +265,22 @@ export default function ProjectManager() {
   if (error) {
     return (
       <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "20px",
-        }}
+        style={{ minHeight: "100vh", background: "#fdfcf8", padding: "20px" }}
       >
-        {/* 头部工具栏 */}
-        <div className="d-flex justify-content-between align-items-center mb-4">
-          <div>
-            <h2
-              className="mb-1 text-white"
-              style={{ fontSize: "28px", fontWeight: "600" }}
-            >
-              端口管理
-            </h2>
-            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
-              管理您的开发端口和项目
-            </p>
-          </div>
-        </div>
-
-        {/* 错误状态内容 */}
         <div
           className="d-flex justify-content-center align-items-center"
           style={{ minHeight: "400px" }}
         >
-          <div
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "20px",
-              padding: "40px",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              textAlign: "center",
-              maxWidth: "500px",
-            }}
-          >
+          <div style={{ textAlign: "center", maxWidth: "500px" }}>
             <div className="mb-4">
-              <div
-                style={{
-                  width: "80px",
-                  height: "80px",
-                  background: "rgba(220, 53, 69, 0.2)",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto",
-                  border: "2px solid rgba(220, 53, 69, 0.3)",
-                }}
-              >
-                <i
-                  className="bi bi-exclamation-triangle"
-                  style={{ fontSize: "32px", color: "#dc3545" }}
-                ></i>
-              </div>
+              <i
+                className="bi bi-exclamation-triangle"
+                style={{ fontSize: "48px", color: "#dc3545" }}
+              ></i>
             </div>
-            <h4 className="text-white mb-3">加载失败</h4>
-            <p className="text-white-50 mb-4">{error}</p>
-            <button className="btn btn-light" onClick={fetchProjects}>
+            <h4 className="text-dark mb-3">加载失败</h4>
+            <p className="text-muted mb-4">{error}</p>
+            <button className="btn btn-primary" onClick={fetchProjects}>
               <i className="bi bi-arrow-clockwise me-2"></i>
               重试
             </button>
@@ -375,79 +294,42 @@ export default function ProjectManager() {
   if (projects.length === 0) {
     return (
       <div
-        style={{
-          minHeight: "100vh",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-          padding: "20px",
-        }}
+        style={{ minHeight: "100vh", background: "#fdfcf8", padding: "20px" }}
       >
-        {/* 头部工具栏 */}
         <div className="d-flex justify-content-between align-items-center mb-4">
           <div>
-            <h2
-              className="mb-1 text-white"
-              style={{ fontSize: "28px", fontWeight: "600" }}
+            <h1
+              className="mb-1 text-dark"
+              style={{ fontSize: "32px", fontWeight: "600" }}
             >
-              端口管理
-            </h2>
-            <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
-              管理您的开发端口和项目
-            </p>
+              start
+            </h1>
           </div>
-          <div className="d-flex gap-3">
+          <div>
             <button
-              className="btn btn-light rounded-pill px-4"
+              className="btn btn-primary rounded-circle"
               onClick={() => setShowAddModal(true)}
-              style={{
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                fontWeight: "500",
-              }}
+              style={{ width: "50px", height: "50px" }}
             >
-              <i className="bi bi-plus-circle me-2"></i>
-              添加项目
+              <i className="bi bi-plus-lg"></i>
             </button>
           </div>
         </div>
 
-        {/* 空状态内容 */}
         <div className="text-center py-5">
-          <div
-            style={{
-              background: "rgba(255,255,255,0.1)",
-              borderRadius: "20px",
-              padding: "60px 40px",
-              backdropFilter: "blur(10px)",
-              border: "1px solid rgba(255,255,255,0.2)",
-              maxWidth: "500px",
-              margin: "0 auto",
-            }}
-          >
+          <div style={{ maxWidth: "500px", margin: "0 auto" }}>
             <div className="mb-4">
-              <div
-                style={{
-                  width: "80px",
-                  height: "80px",
-                  background: "rgba(255,255,255,0.2)",
-                  borderRadius: "50%",
-                  display: "flex",
-                  alignItems: "center",
-                  justifyContent: "center",
-                  margin: "0 auto",
-                  border: "2px solid rgba(255,255,255,0.3)",
-                }}
-              >
-                <i
-                  className="bi bi-hdd-network"
-                  style={{ fontSize: "32px", color: "white" }}
-                ></i>
-              </div>
+              <i
+                className="bi bi-hdd-network"
+                style={{ fontSize: "48px", color: "#6c757d" }}
+              ></i>
             </div>
-            <h4 className="text-white mb-3">暂无项目</h4>
-            <p className="text-white-50 mb-4">
-              还没有添加任何开发项目。点击上方的&ldquo;添加项目&rdquo;按钮开始管理您的端口！
+            <h4 className="text-dark mb-3">暂无项目</h4>
+            <p className="text-muted mb-4">
+              还没有添加任何开发项目。点击右上角的按钮开始添加项目！
             </p>
             <button
-              className="btn btn-light btn-lg"
+              className="btn btn-primary btn-lg"
               onClick={() => setShowAddModal(true)}
             >
               <i className="bi bi-plus-circle me-2"></i>
@@ -456,14 +338,12 @@ export default function ProjectManager() {
           </div>
         </div>
 
-        {/* 添加项目模态框 */}
         <AddProjectModal
           isOpen={showAddModal}
           onClose={() => setShowAddModal(false)}
           onProjectAdded={handleProjectAdded}
         />
 
-        {/* Toast 通知容器 */}
         <ToastContainer toasts={toasts} onClose={removeToast} />
       </div>
     );
@@ -471,60 +351,38 @@ export default function ProjectManager() {
 
   // 项目列表
   return (
-    <div
-      style={{
-        minHeight: "100vh",
-        background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        padding: "20px",
-      }}
-    >
+    <div style={{ minHeight: "100vh", background: "#fdfcf8", padding: "20px" }}>
       {/* 头部工具栏 */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <div>
-          <h2
-            className="mb-1 text-white"
-            style={{ fontSize: "28px", fontWeight: "600" }}
+          <h1
+            className="mb-1 text-dark"
+            style={{ fontSize: "32px", fontWeight: "600" }}
           >
-            端口管理
-          </h2>
-          <p className="text-white-50 mb-0" style={{ fontSize: "14px" }}>
-            管理您的开发端口和项目
-          </p>
+            start
+          </h1>
         </div>
         <div className="d-flex gap-3">
           <button
-            className="btn btn-light rounded-pill px-4"
+            className="btn btn-primary rounded-circle"
             onClick={() => setShowAddModal(true)}
-            style={{
-              boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-              fontWeight: "500",
-            }}
+            style={{ width: "50px", height: "50px" }}
           >
-            <i className="bi bi-plus-circle me-2"></i>
-            添加项目
+            <i className="bi bi-plus-lg"></i>
           </button>
           <div className="dropdown">
             <button
               type="button"
-              className="btn btn-outline-light rounded-pill px-4 dropdown-toggle"
+              className="btn btn-outline-secondary rounded-circle dropdown-toggle"
               data-bs-toggle="dropdown"
-              aria-expanded="false"
-              style={{
-                boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
-                fontWeight: "500",
-                border: "2px solid rgba(255, 255, 255, 0.3)",
-              }}
+              style={{ width: "50px", height: "50px" }}
             >
-              <i className="bi bi-three-dots me-1"></i>
-              更多
+              <i className="bi bi-three-dots"></i>
             </button>
-            <ul
-              className="dropdown-menu dropdown-menu-end shadow-lg border-0"
-              style={{ borderRadius: "12px" }}
-            >
+            <ul className="dropdown-menu dropdown-menu-end">
               <li>
                 <button
-                  className="dropdown-item py-2"
+                  className="dropdown-item"
                   onClick={handleExportProjects}
                   disabled={projects.length === 0}
                 >
@@ -536,10 +394,7 @@ export default function ProjectManager() {
                 <hr className="dropdown-divider" />
               </li>
               <li>
-                <label
-                  className="dropdown-item py-2"
-                  style={{ cursor: "pointer" }}
-                >
+                <label className="dropdown-item" style={{ cursor: "pointer" }}>
                   <i className="bi bi-upload me-2"></i>
                   导入配置
                   <input
@@ -555,8 +410,8 @@ export default function ProjectManager() {
         </div>
       </div>
 
-      {/* 项目网格 - 与Flask项目完全一致的布局 */}
-      <div className="row g-3">
+      {/* 项目网格 */}
+      <div className="row g-4">
         {projects.map((project) => (
           <div key={project.id} className="col-12 col-sm-6 col-lg-4 col-xl-3">
             <ProjectCard
@@ -571,14 +426,27 @@ export default function ProjectManager() {
         ))}
       </div>
 
-      {/* 添加项目模态框 */}
+      {/* 探索发现区域 */}
+      <div className="mt-5">
+        <h2
+          className="mb-4 text-dark"
+          style={{ fontSize: "24px", fontWeight: "600" }}
+        >
+          探索发现
+        </h2>
+        <div className="p-4 bg-light rounded-3 text-center">
+          <p className="text-muted mb-0">
+            这里是为你准备的探索空间，敬请期待...
+          </p>
+        </div>
+      </div>
+
       <AddProjectModal
         isOpen={showAddModal}
         onClose={() => setShowAddModal(false)}
         onProjectAdded={handleProjectAdded}
       />
 
-      {/* Toast 通知容器 */}
       <ToastContainer toasts={toasts} onClose={removeToast} />
     </div>
   );
