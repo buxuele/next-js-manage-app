@@ -67,47 +67,48 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 /**
- * 验证task数据
+ * 验证项目数据
  */
-
-// --- 修改为 ---
-
-// 在函数上方定义一个输入类型
-interface TaskValidationData {
+interface ProjectValidationData {
+  name?: unknown;
+  url?: unknown;
   description?: unknown;
-  content?: unknown;
+  path?: unknown;
 }
 
-export function validateTaskData(data: TaskValidationData): {
+export function validateProjectData(data: ProjectValidationData): {
   isValid: boolean;
   errors: string[];
 } {
   const errors: string[] = [];
 
-  // 为了安全，我们先检查类型再使用
-  if (
-    !data.description ||
-    typeof data.description !== "string" ||
-    !data.description.trim()
-  ) {
-    errors.push("描述不能为空");
+  // 验证项目名称
+  if (!data.name || typeof data.name !== "string" || !data.name.trim()) {
+    errors.push("项目名称不能为空");
   }
 
-  if (
-    !data.content ||
-    typeof data.content !== "string" ||
-    !data.content.trim()
-  ) {
-    errors.push("内容不能为空");
+  // 验证项目URL
+  if (!data.url || typeof data.url !== "string" || !data.url.trim()) {
+    errors.push("项目URL不能为空");
+  } else if (typeof data.url === "string") {
+    try {
+      new URL(data.url);
+    } catch {
+      errors.push("项目URL格式不正确");
+    }
   }
 
-  // 只有在确定是字符串后才检查长度
-  if (typeof data.description === "string" && data.description.length > 200) {
-    errors.push("描述长度不能超过200个字符");
+  // 验证长度限制
+  if (typeof data.name === "string" && data.name.length > 100) {
+    errors.push("项目名称长度不能超过100个字符");
   }
 
-  if (typeof data.content === "string" && data.content.length > 50000) {
-    errors.push("内容长度不能超过50000个字符");
+  if (typeof data.description === "string" && data.description.length > 500) {
+    errors.push("项目描述长度不能超过500个字符");
+  }
+
+  if (typeof data.path === "string" && data.path.length > 500) {
+    errors.push("项目路径长度不能超过500个字符");
   }
 
   return {

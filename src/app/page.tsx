@@ -10,6 +10,6 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  // 重定向到任务管理页面
-  redirect("/tasks");
+  // 重定向到项目管理页面
+  redirect("/projects");
 }

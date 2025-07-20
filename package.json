@@ -1,8 +1,8 @@
 {
-  "name": "next-js-task-manager",
+  "name": "next-js-project-manager",
   "version": "0.1.0",
   "private": true,
-  "description": "一个基于 Next.js 的任务管理系统",
+  "description": "一个基于 Next.js 的项目管理系统",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

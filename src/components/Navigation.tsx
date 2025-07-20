@@ -17,7 +17,7 @@ export default function Navigation() {
 
   const handleExport = async () => {
     try {
-      const response = await fetch("/api/tasks/export");
+      const response = await fetch("/api/projects/export");
       const result = await response.json();
 
       if (result.success) {
@@ -27,7 +27,7 @@ export default function Navigation() {
 
         const link = document.createElement("a");
         link.href = url;
-        link.download = `tasks-export-${
+        link.download = `projects-export-${
           new Date().toISOString().split("T")[0]
         }.json`;
         document.body.appendChild(link);
@@ -57,7 +57,7 @@ export default function Navigation() {
       const text = await file.text();
       const importData = JSON.parse(text);
 
-      const response = await fetch("/api/tasks/import", {
+      const response = await fetch("/api/projects/import", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -69,12 +69,12 @@ export default function Navigation() {
 
       if (result.success) {
         const { imported, total, errors } = result.data;
-        let message = `导入完成！成功导入 ${imported}/${total} 个任务`;
+        let message = `导入完成！成功导入 ${imported}/${total} 个项目`;
         if (errors.length > 0) {
           message += `\n\n错误信息:\n${errors.join("\n")}`;
         }
         alert(message);
-        window.location.reload(); // 刷新页面以显示新导入的任务
+        window.location.reload(); // 刷新页面以显示新导入的项目
       } else {
         alert("导入失败: " + result.error);
       }
@@ -92,9 +92,9 @@ export default function Navigation() {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
       <div className="container-fluid">
-        <Link className="navbar-brand" href="/tasks">
-          <i className="bi bi-list-task me-2"></i>
-          我的任务中心
+        <Link className="navbar-brand" href="/projects">
+          <i className="bi bi-grid-3x3-gap me-2"></i>
+          我的项目中心
         </Link>
 
         <button
@@ -110,11 +110,13 @@ export default function Navigation() {
           <ul className="navbar-nav me-auto">
             <li className="nav-item">
               <Link
-                className={`nav-link ${pathname === "/tasks" ? "active" : ""}`}
-                href="/tasks"
+                className={`nav-link ${
+                  pathname === "/projects" ? "active" : ""
+                }`}
+                href="/projects"
               >
-                <i className="bi bi-list-task me-1"></i>
-                任务管理
+                <i className="bi bi-grid-3x3-gap me-1"></i>
+                项目管理
               </Link>
             </li>
           </ul>

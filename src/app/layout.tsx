@@ -5,8 +5,8 @@ import "./globals.css";
 import "../styles/flask-style.css";
 
 export const metadata: Metadata = {
-  title: "我的任务中心",
-  description: "基于 Next.js 的任务管理系统",
+  title: "我的项目中心",
+  description: "基于 Next.js 的项目管理系统",
 };
 
 export default function RootLayout({

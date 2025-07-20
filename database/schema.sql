@@ -9,12 +9,14 @@ CREATE TABLE IF NOT EXISTS users (
     updated_at BIGINT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS tasks (
+CREATE TABLE IF NOT EXISTS projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    description TEXT NOT NULL,
-    filename TEXT NOT NULL DEFAULT 'untitled.txt',
-    content TEXT NOT NULL,
+    name VARCHAR(255) NOT NULL,
+    description TEXT DEFAULT '',
+    url TEXT NOT NULL,
+    path TEXT DEFAULT '',
+    image TEXT DEFAULT '',
     created_at BIGINT NOT NULL,
     updated_at BIGINT NOT NULL
 );
@@ -23,5 +25,6 @@ CREATE TABLE IF NOT EXISTS tasks (
 CREATE INDEX IF NOT EXISTS idx_users_github_id ON users(github_id);
 CREATE INDEX IF NOT EXISTS idx_users_username ON users(username);
 
-CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
-CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_user_id ON projects(user_id);
+CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_projects_name ON projects(name);
