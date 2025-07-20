@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
-import { loadGists, saveGist } from "@/lib/data-adapter";
-import { validateGistData } from "@/lib/utils";
+import { loadTasks, saveTask } from "@/lib/data-adapter";
+import { validateTaskData } from "@/lib/utils";
 import { requireAuth } from "@/lib/auth-middleware";
 
 export async function GET() {
@@ -11,13 +11,13 @@ export async function GET() {
   }
 
   try {
-    // 只加载当前用户的 gists
-    const gists = await loadGists(authResult.user.id);
-    return NextResponse.json(gists);
+    // 只加载当前用户的 tasks
+    const tasks = await loadTasks(authResult.user.id);
+    return NextResponse.json(tasks);
   } catch (error) {
-    console.error("Error loading gists:", error);
+    console.error("Error loading tasks:", error);
     return NextResponse.json(
-      { error: "Failed to load gists" },
+      { error: "Failed to load tasks" },
       { status: 500 }
     );
   }
@@ -34,7 +34,7 @@ export async function POST(request: Request) {
     const data = await request.json();
 
     // 使用新的验证函数
-    const validation = validateGistData(data);
+    const validation = validateTaskData(data);
     if (!validation.isValid) {
       return NextResponse.json(
         { error: validation.errors.join(", ") },
@@ -42,19 +42,19 @@ export async function POST(request: Request) {
       );
     }
 
-    // 使用适配器的 saveGist 方法，关联到当前用户
-    const newGist = await saveGist({
+    // 使用适配器的 saveTask 方法，关联到当前用户
+    const newTask = await saveTask({
       user_id: authResult.user.id,
       description: data.description,
       filename: data.filename || "untitled.txt",
       content: data.content,
     });
 
-    return NextResponse.json(newGist, { status: 201 });
+    return NextResponse.json(newTask, { status: 201 });
   } catch (error) {
-    console.error("Error creating gist:", error);
+    console.error("Error creating task:", error);
     return NextResponse.json(
-      { error: "Failed to create gist" },
+      { error: "Failed to create task" },
       { status: 500 }
     );
   }

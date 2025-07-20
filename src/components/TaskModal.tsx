@@ -1,23 +1,23 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Gist } from "@/lib/data";
-import { detectFileType, validateGistData } from "@/lib/utils";
+import { Task } from "@/lib/data";
+import { detectFileType, validateTaskData } from "@/lib/utils";
 import type { Modal } from "bootstrap";
 
-interface GistModalProps {
+interface TaskModalProps {
   show: boolean;
   onClose: () => void;
-  onSave: (gistData: Partial<Gist>) => Promise<void>;
-  gistToEdit: Gist | null;
+  onSave: (taskData: Partial<Task>) => Promise<void>;
+  taskToEdit: Task | null;
 }
 
-export default function GistModal({
+export default function TaskModal({
   show,
   onClose,
   onSave,
-  gistToEdit,
-}: GistModalProps) {
+  taskToEdit,
+}: TaskModalProps) {
   const modalRef = useRef<HTMLDivElement>(null);
   const [modalInstance, setModalInstance] = useState<Modal | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -27,16 +27,16 @@ export default function GistModal({
   const [content, setContent] = useState("");
 
   useEffect(() => {
-    if (show && gistToEdit) {
-      setDescription(gistToEdit.description);
-      setFilename(gistToEdit.filename);
-      setContent(gistToEdit.content);
+    if (show && taskToEdit) {
+      setDescription(taskToEdit.description);
+      setFilename(taskToEdit.filename);
+      setContent(taskToEdit.content);
     } else if (!show) {
       setDescription("");
       setFilename("");
       setContent("");
     }
-  }, [show, gistToEdit]);
+  }, [show, taskToEdit]);
 
   useEffect(() => {
     if (!modalRef.current) return;
@@ -60,7 +60,7 @@ export default function GistModal({
 
   const handleSave = async () => {
     // 使用新的验证函数
-    const validation = validateGistData({ description, content });
+    const validation = validateTaskData({ description, content });
     if (!validation.isValid) {
       alert(validation.errors.join("\n"));
       return;
@@ -76,7 +76,7 @@ export default function GistModal({
     setIsLoading(true);
     try {
       await onSave({
-        id: gistToEdit?.id,
+        id: taskToEdit?.id,
         description: description.trim(),
         filename: finalFilename,
         content: content.trim(),
@@ -92,14 +92,14 @@ export default function GistModal({
       className="modal fade"
       ref={modalRef}
       tabIndex={-1}
-      aria-labelledby="gistModalLabel"
+      aria-labelledby="taskModalLabel"
       aria-hidden="true"
     >
       <div className="modal-dialog modal-lg">
         <div className="modal-content">
           <div className="modal-header">
-            <h5 className="modal-title" id="gistModalLabel">
-              {gistToEdit ? "编辑片段" : "添加新的片段"}
+            <h5 className="modal-title" id="taskModalLabel">
+              {taskToEdit ? "编辑任务" : "添加新的任务"}
             </h5>
             <button
               type="button"
@@ -109,38 +109,38 @@ export default function GistModal({
           </div>
           <div className="modal-body">
             <div className="mb-3">
-              <label htmlFor="gistFilename" className="form-label">
+              <label htmlFor="taskFilename" className="form-label">
                 文件名 (例如: script.py)
               </label>
               <input
                 type="text"
                 className="form-control"
-                id="gistFilename"
+                id="taskFilename"
                 value={filename}
                 onChange={(e) => setFilename(e.target.value)}
                 placeholder="script.py"
               />
             </div>
             <div className="mb-3">
-              <label htmlFor="gistDescription" className="form-label">
-                描述 (这个片段是干嘛的？)
+              <label htmlFor="taskDescription" className="form-label">
+                描述 (这个任务是干嘛的？)
               </label>
               <input
                 type="text"
                 className="form-control"
-                id="gistDescription"
+                id="taskDescription"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 required
               />
             </div>
             <div className="mb-3">
-              <label htmlFor="gistContent" className="form-label">
+              <label htmlFor="taskContent" className="form-label">
                 内容
               </label>
               <textarea
                 className="form-control"
-                id="gistContent"
+                id="taskContent"
                 rows={15}
                 value={content}
                 onChange={(e) => setContent(e.target.value)}

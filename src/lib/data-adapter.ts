@@ -1,134 +1,134 @@
 // 数据存储适配器 - 根据环境自动选择存储方案
-import { Gist } from "./data";
+import { Task } from "./data";
 
 // 根据环境变量决定使用哪种数据存储
 const getDataProvider = async () => {
   // 优先使用 Neon 数据库（如果有 DATABASE_URL 配置）
   if (process.env.DATABASE_URL) {
     console.log("Using Neon PostgreSQL database");
-    const { loadGists, saveGists, getGist, deleteGist } = await import(
+    const { loadTasks, saveTasks, getTask, deleteTask } = await import(
       "./data-neon"
     );
-    return { loadGists, saveGists, getGist, deleteGist };
+    return { loadTasks, saveTasks, getTask, deleteTask };
   }
 
   // 默认使用本地文件存储（开发环境）
   console.log("Using local file storage");
-  const { loadGists, saveGists } = await import("./data");
+  const { loadTasks, saveTasks } = await import("./data");
 
   // 为本地存储添加缺失的方法
-  const loadGistsWithUserId = async (userId?: string): Promise<Gist[]> => {
-    const allGists = await loadGists();
+  const loadTasksWithUserId = async (userId?: string): Promise<Task[]> => {
+    const allTasks = await loadTasks();
     if (userId) {
-      return allGists.filter((g) => g.user_id === userId);
+      return allTasks.filter((t) => t.user_id === userId);
     }
-    return allGists;
+    return allTasks;
   };
 
-  const getGist = async (id: string): Promise<Gist | null> => {
-    const gists = await loadGists();
-    return gists.find((g) => g.id === id) || null;
+  const getTask = async (id: string): Promise<Task | null> => {
+    const tasks = await loadTasks();
+    return tasks.find((t) => t.id === id) || null;
   };
 
-  const deleteGist = async (id: string): Promise<boolean> => {
-    const gists = await loadGists();
-    const filteredGists = gists.filter((g) => g.id !== id);
+  const deleteTask = async (id: string): Promise<boolean> => {
+    const tasks = await loadTasks();
+    const filteredTasks = tasks.filter((t) => t.id !== id);
 
-    if (gists.length === filteredGists.length) {
+    if (tasks.length === filteredTasks.length) {
       return false;
     }
 
-    await saveGists(filteredGists);
+    await saveTasks(filteredTasks);
     return true;
   };
 
-  return { loadGists: loadGistsWithUserId, saveGists, getGist, deleteGist };
+  return { loadTasks: loadTasksWithUserId, saveTasks, getTask, deleteTask };
 };
 
 // 导出统一的接口
-export const loadGists = async (userId?: string): Promise<Gist[]> => {
+export const loadTasks = async (userId?: string): Promise<Task[]> => {
   const provider = await getDataProvider();
-  return provider.loadGists(userId);
+  return provider.loadTasks(userId);
 };
 
-export const saveGists = async (gists: Gist[]): Promise<void> => {
+export const saveTasks = async (tasks: Task[]): Promise<void> => {
   const provider = await getDataProvider();
-  return provider.saveGists(gists);
+  return provider.saveTasks(tasks);
 };
 
-export const getGist = async (id: string): Promise<Gist | null> => {
+export const getTask = async (id: string): Promise<Task | null> => {
   const provider = await getDataProvider();
-  return provider.getGist(id);
+  return provider.getTask(id);
 };
 
-export const deleteGist = async (id: string): Promise<boolean> => {
+export const deleteTask = async (id: string): Promise<boolean> => {
   const provider = await getDataProvider();
-  return provider.deleteGist(id);
+  return provider.deleteTask(id);
 };
 
-// 保存单个 gist（新增或更新）
-export const saveGist = async (gistData: Partial<Gist>): Promise<Gist> => {
-  // 如果使用 Neon 数据库，直接调用 Neon 的 saveGist
+// 保存单个 task（新增或更新）
+export const saveTask = async (taskData: Partial<Task>): Promise<Task> => {
+  // 如果使用 Neon 数据库，直接调用 Neon 的 saveTask
   if (process.env.DATABASE_URL) {
-    const { saveGist: neonSaveGist } = await import("./data-neon");
+    const { saveTask: neonSaveTask } = await import("./data-neon");
 
-    if (gistData.id) {
-      // 更新现有 gist
-      const updatedGist = {
-        ...gistData,
+    if (taskData.id) {
+      // 更新现有 task
+      const updatedTask = {
+        ...taskData,
         updated_at: Date.now(),
-      } as Gist;
-      return neonSaveGist(updatedGist);
+      } as Task;
+      return neonSaveTask(updatedTask);
     } else {
-      // 创建新 gist
+      // 创建新 task
       const { randomUUID } = await import("crypto");
-      const newGist: Gist = {
+      const newTask: Task = {
         id: randomUUID(),
-        user_id: gistData.user_id || "",
-        description: gistData.description || "",
-        filename: gistData.filename || "untitled.txt",
-        content: gistData.content || "",
+        user_id: taskData.user_id || "",
+        description: taskData.description || "",
+        filename: taskData.filename || "untitled.txt",
+        content: taskData.content || "",
         created_at: Date.now(),
         updated_at: Date.now(),
       };
-      return neonSaveGist(newGist);
+      return neonSaveTask(newTask);
     }
   }
 
   // 本地文件存储的逻辑（兼容性）
-  const gists = await loadGists();
+  const tasks = await loadTasks();
 
-  if (gistData.id) {
-    // 更新现有 gist
-    const index = gists.findIndex((g) => g.id === gistData.id);
+  if (taskData.id) {
+    // 更新现有 task
+    const index = tasks.findIndex((t) => t.id === taskData.id);
     if (index === -1) {
-      throw new Error("Gist not found");
+      throw new Error("Task not found");
     }
 
-    const updatedGist = {
-      ...gists[index],
-      ...gistData,
+    const updatedTask = {
+      ...tasks[index],
+      ...taskData,
       updated_at: Date.now(),
-    } as Gist;
+    } as Task;
 
-    gists[index] = updatedGist;
-    await saveGists(gists);
-    return updatedGist;
+    tasks[index] = updatedTask;
+    await saveTasks(tasks);
+    return updatedTask;
   } else {
-    // 创建新 gist
+    // 创建新 task
     const { randomUUID } = await import("crypto");
-    const newGist: Gist = {
+    const newTask: Task = {
       id: randomUUID(),
-      user_id: gistData.user_id || "",
-      description: gistData.description || "",
-      filename: gistData.filename || "untitled.txt",
-      content: gistData.content || "",
+      user_id: taskData.user_id || "",
+      description: taskData.description || "",
+      filename: taskData.filename || "untitled.txt",
+      content: taskData.content || "",
       created_at: Date.now(),
       updated_at: Date.now(),
     };
 
-    gists.unshift(newGist);
-    await saveGists(gists);
-    return newGist;
+    tasks.unshift(newTask);
+    await saveTasks(tasks);
+    return newTask;
   }
 };

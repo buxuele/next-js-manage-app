@@ -119,6 +119,15 @@ export default function Navigation() {
                 端口管理
               </Link>
             </li>
+            <li className="nav-item">
+              <Link
+                className={`nav-link ${pathname === "/tasks" ? "active" : ""}`}
+                href="/tasks"
+              >
+                <i className="bi bi-list-task me-1"></i>
+                任务管理
+              </Link>
+            </li>
           </ul>
 
           <ul className="navbar-nav">

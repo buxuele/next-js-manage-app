@@ -1,6 +1,6 @@
 import { Pool } from "@neondatabase/serverless";
 
-export interface Gist {
+export interface Task {
   id: string;
   user_id: string;
   description: string;
@@ -14,31 +14,31 @@ export interface Gist {
 const pool = new Pool({ connectionString: process.env.DATABASE_URL });
 
 /**
- * 从 Neon 数据库加载指定用户的 gists
+ * 从 Neon 数据库加载指定用户的 tasks
  */
-export async function loadGists(userId?: string): Promise<Gist[]> {
+export async function loadTasks(userId?: string): Promise<Task[]> {
   try {
-    console.log("Loading gists from Neon database...");
+    console.log("Loading tasks from Neon database...");
 
     const client = await pool.connect();
     let result;
 
     if (userId) {
-      // 加载特定用户的 gists
+      // 加载特定用户的 tasks
       result = await client.query(
-        "SELECT * FROM gists WHERE user_id = $1 ORDER BY updated_at DESC",
+        "SELECT * FROM tasks WHERE user_id = $1 ORDER BY updated_at DESC",
         [userId]
       );
     } else {
-      // 加载所有 gists（用于管理员或兼容性）
+      // 加载所有 tasks（用于管理员或兼容性）
       result = await client.query(
-        "SELECT * FROM gists ORDER BY updated_at DESC"
+        "SELECT * FROM tasks ORDER BY updated_at DESC"
       );
     }
 
     client.release();
 
-    const gists: Gist[] = result.rows.map((row) => ({
+    const tasks: Task[] = result.rows.map((row) => ({
       id: row.id,
       user_id: row.user_id,
       description: row.description,
@@ -48,25 +48,25 @@ export async function loadGists(userId?: string): Promise<Gist[]> {
       updated_at: parseInt(row.updated_at),
     }));
 
-    console.log(`Successfully loaded ${gists.length} gists from Neon`);
-    return gists;
+    console.log(`Successfully loaded ${tasks.length} tasks from Neon`);
+    return tasks;
   } catch (error) {
-    console.error("Error loading gists from Neon:", error);
+    console.error("Error loading tasks from Neon:", error);
     return [];
   }
 }
 
 /**
- * 保存单个 gist 到 Neon 数据库
+ * 保存单个 task 到 Neon 数据库
  */
-export async function saveGist(gist: Gist): Promise<Gist> {
+export async function saveTask(task: Task): Promise<Task> {
   try {
     const client = await pool.connect();
 
     // 使用 UPSERT (INSERT ... ON CONFLICT)
     const result = await client.query(
       `
-      INSERT INTO gists (id, user_id, description, filename, content, created_at, updated_at)
+      INSERT INTO tasks (id, user_id, description, filename, content, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7)
       ON CONFLICT (id) 
       DO UPDATE SET 
@@ -77,19 +77,19 @@ export async function saveGist(gist: Gist): Promise<Gist> {
       RETURNING *
     `,
       [
-        gist.id,
-        gist.user_id,
-        gist.description,
-        gist.filename,
-        gist.content,
-        gist.created_at,
-        gist.updated_at,
+        task.id,
+        task.user_id,
+        task.description,
+        task.filename,
+        task.content,
+        task.created_at,
+        task.updated_at,
       ]
     );
 
     client.release();
 
-    const savedGist: Gist = {
+    const savedTask: Task = {
       id: result.rows[0].id,
       user_id: result.rows[0].user_id,
       description: result.rows[0].description,
@@ -99,18 +99,18 @@ export async function saveGist(gist: Gist): Promise<Gist> {
       updated_at: parseInt(result.rows[0].updated_at),
     };
 
-    console.log("Successfully saved gist to Neon");
-    return savedGist;
+    console.log("Successfully saved task to Neon");
+    return savedTask;
   } catch (error) {
-    console.error("Error saving gist to Neon:", error);
-    throw new Error("Failed to save gist to database");
+    console.error("Error saving task to Neon:", error);
+    throw new Error("Failed to save task to database");
   }
 }
 
 /**
- * 批量保存 gists（为了兼容现有接口）
+ * 批量保存 tasks（为了兼容现有接口）
  */
-export async function saveGists(gists: Gist[]): Promise<void> {
+export async function saveTasks(tasks: Task[]): Promise<void> {
   try {
     const client = await pool.connect();
 
@@ -119,30 +119,30 @@ export async function saveGists(gists: Gist[]): Promise<void> {
 
     try {
       // 清空现有数据
-      await client.query("DELETE FROM gists");
+      await client.query("DELETE FROM tasks");
 
       // 批量插入新数据
-      for (const gist of gists) {
+      for (const task of tasks) {
         await client.query(
           `
-          INSERT INTO gists (id, user_id, description, filename, content, created_at, updated_at)
+          INSERT INTO tasks (id, user_id, description, filename, content, created_at, updated_at)
           VALUES ($1, $2, $3, $4, $5, $6, $7)
         `,
           [
-            gist.id,
-            gist.user_id,
-            gist.description,
-            gist.filename,
-            gist.content,
-            gist.created_at,
-            gist.updated_at,
+            task.id,
+            task.user_id,
+            task.description,
+            task.filename,
+            task.content,
+            task.created_at,
+            task.updated_at,
           ]
         );
       }
 
       // 提交事务
       await client.query("COMMIT");
-      console.log(`Successfully saved ${gists.length} gists to Neon`);
+      console.log(`Successfully saved ${tasks.length} tasks to Neon`);
     } catch (error) {
       // 回滚事务
       await client.query("ROLLBACK");
@@ -151,18 +151,18 @@ export async function saveGists(gists: Gist[]): Promise<void> {
       client.release();
     }
   } catch (error) {
-    console.error("Error batch saving gists to Neon:", error);
-    throw new Error("Failed to save gists to database");
+    console.error("Error batch saving tasks to Neon:", error);
+    throw new Error("Failed to save tasks to database");
   }
 }
 
 /**
- * 获取单个 gist
+ * 获取单个 task
  */
-export async function getGist(id: string): Promise<Gist | null> {
+export async function getTask(id: string): Promise<Task | null> {
   try {
     const client = await pool.connect();
-    const result = await client.query("SELECT * FROM gists WHERE id = $1", [
+    const result = await client.query("SELECT * FROM tasks WHERE id = $1", [
       id,
     ]);
     client.release();
@@ -182,34 +182,34 @@ export async function getGist(id: string): Promise<Gist | null> {
       updated_at: parseInt(row.updated_at),
     };
   } catch (error) {
-    console.error("Error getting gist from Neon:", error);
+    console.error("Error getting task from Neon:", error);
     return null;
   }
 }
 
 /**
- * 删除单个 gist
+ * 删除单个 task
  */
 // --- 修改为 (处理可能的 null) ---
-export async function deleteGist(id: string): Promise<boolean> {
+export async function deleteTask(id: string): Promise<boolean> {
   try {
     const client = await pool.connect();
-    const result = await client.query("DELETE FROM gists WHERE id = $1", [id]);
+    const result = await client.query("DELETE FROM tasks WHERE id = $1", [id]);
     client.release();
 
-    console.log("Successfully deleted gist from Neon");
+    console.log("Successfully deleted task from Neon");
     // 如果 result.rowCount 是 null，则我们视其为 0。
     return (result.rowCount ?? 0) > 0;
   } catch (error) {
-    console.error("Error deleting gist from Neon:", error);
+    console.error("Error deleting task from Neon:", error);
     return false;
   }
 }
 
 /**
- * 获取 gists 统计信息
+ * 获取 tasks 统计信息
  */
-export async function getGistStats(): Promise<{
+export async function getTaskStats(): Promise<{
   total: number;
   lastUpdated: number | null;
 }> {
@@ -219,7 +219,7 @@ export async function getGistStats(): Promise<{
       SELECT 
         COUNT(*) as total,
         MAX(updated_at) as last_updated
-      FROM gists
+      FROM tasks
     `);
     client.release();
 
@@ -230,7 +230,7 @@ export async function getGistStats(): Promise<{
         : null,
     };
   } catch (error) {
-    console.error("Error getting gist stats from Neon:", error);
+    console.error("Error getting task stats from Neon:", error);
     return { total: 0, lastUpdated: null };
   }
 }

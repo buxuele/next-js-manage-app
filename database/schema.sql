@@ -23,7 +23,7 @@ CREATE TABLE IF NOT EXISTS projects (
     updated_at BIGINT NOT NULL
 );
 
-CREATE TABLE IF NOT EXISTS gists (
+CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
     description TEXT NOT NULL,
@@ -43,5 +43,5 @@ CREATE INDEX IF NOT EXISTS idx_projects_is_running ON projects(is_running);
 CREATE INDEX IF NOT EXISTS idx_projects_updated_at ON projects(updated_at DESC);
 CREATE INDEX IF NOT EXISTS idx_projects_last_accessed ON projects(last_accessed DESC);
 
-CREATE INDEX IF NOT EXISTS idx_gists_user_id ON gists(user_id);
-CREATE INDEX IF NOT EXISTS idx_gists_updated_at ON gists(updated_at DESC);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_updated_at ON tasks(updated_at DESC);

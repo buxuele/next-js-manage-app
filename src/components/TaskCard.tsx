@@ -1,56 +1,55 @@
 "use client";
 
 import { useState, useEffect, useMemo } from "react";
-import { Gist } from "@/lib/data";
+import { Task } from "@/lib/data";
 import { getLanguageFromFilename, formatTimestamp } from "@/lib/utils";
 import { APP_CONFIG } from "@/lib/constants";
 import hljs from "highlight.js";
 
-interface GistCardProps {
-  gist: Gist;
+interface TaskCardProps {
+  task: Task;
   onDelete: (id: string) => void;
-  onEdit: (gist: Gist) => void; // 修改这里，传递整个 gist 对象
+  onEdit: (task: Task) => void; // 修改这里，传递整个 task 对象
 }
 
 // 使用常量文件中的配置
 const { PREVIEW_LINE_COUNT } = APP_CONFIG;
 
-export default function GistCard({ gist, onDelete, onEdit }: GistCardProps) {
+export default function TaskCard({ task, onDelete, onEdit }: TaskCardProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [copyText, setCopyText] = useState("复制");
 
   // 使用 useMemo 缓存计算结果
-  const { isLong, displayContent, lineNumbers } =
-    useMemo(() => {
-      const lines = gist.content.split("\n");
-      const isLong = lines.length > PREVIEW_LINE_COUNT;
-      const displayLines = isExpanded
-        ? lines
-        : lines.slice(0, PREVIEW_LINE_COUNT);
-      const displayContent = displayLines.join("\n");
-      const lineNumbers = Array.from(
-        { length: displayLines.length },
-        (_, i) => i + 1
-      ).join("\n");
+  const { isLong, displayContent, lineNumbers } = useMemo(() => {
+    const lines = task.content.split("\n");
+    const isLong = lines.length > PREVIEW_LINE_COUNT;
+    const displayLines = isExpanded
+      ? lines
+      : lines.slice(0, PREVIEW_LINE_COUNT);
+    const displayContent = displayLines.join("\n");
+    const lineNumbers = Array.from(
+      { length: displayLines.length },
+      (_, i) => i + 1
+    ).join("\n");
 
-      return { lines, isLong, displayLines, displayContent, lineNumbers };
-    }, [gist.content, isExpanded]);
+    return { lines, isLong, displayLines, displayContent, lineNumbers };
+  }, [task.content, isExpanded]);
 
   useEffect(() => {
-    const currentCard = document.getElementById(`gist-card-${gist.id}`);
+    const currentCard = document.getElementById(`task-card-${task.id}`);
     if (currentCard) {
       const codeBlock = currentCard.querySelector("pre code");
       if (codeBlock) {
         hljs.highlightElement(codeBlock as HTMLElement);
       }
     }
-  }, [displayContent, gist.id]);
+  }, [displayContent, task.id]);
 
   const toggleExpand = () => setIsExpanded(!isExpanded);
 
   const handleCopy = async () => {
     try {
-      await navigator.clipboard.writeText(gist.content);
+      await navigator.clipboard.writeText(task.content);
       setCopyText("已复制!");
       setTimeout(() => setCopyText("复制"), 2000);
     } catch (err) {
@@ -61,9 +60,9 @@ export default function GistCard({ gist, onDelete, onEdit }: GistCardProps) {
   };
 
   const handleDelete = async () => {
-    if (window.confirm(`确定要删除片段 "${gist.filename}" 吗？`)) {
+    if (window.confirm(`确定要删除任务 "${task.filename}" 吗？`)) {
       try {
-        const response = await fetch(`/api/gists/${gist.id}`, {
+        const response = await fetch(`/api/tasks/${task.id}`, {
           method: "DELETE",
         });
         if (!response.ok) {
@@ -72,7 +71,7 @@ export default function GistCard({ gist, onDelete, onEdit }: GistCardProps) {
             .catch(() => ({ error: "删除失败" }));
           throw new Error(errorData.error || "删除失败");
         }
-        onDelete(gist.id);
+        onDelete(task.id);
       } catch (error) {
         console.error("删除请求失败:", error);
         const errorMessage =
@@ -83,21 +82,21 @@ export default function GistCard({ gist, onDelete, onEdit }: GistCardProps) {
   };
 
   return (
-    <div className="card" id={`gist-card-${gist.id}`}>
+    <div className="card" id={`task-card-${task.id}`}>
       <div className="card-header">
         <div className="header-info">
-          <div className="gist-filename">{gist.filename}</div>
-          <div className="gist-description">{gist.description}</div>
+          <div className="task-filename">{task.filename}</div>
+          <div className="task-description">{task.description}</div>
           <div
-            className="gist-timestamp text-muted"
+            className="task-timestamp text-muted"
             style={{ fontSize: "0.7em" }}
           >
-            {formatTimestamp(gist.updated_at)}
+            {formatTimestamp(task.updated_at)}
           </div>
         </div>
         <div className="actions">
           <button
-            onClick={() => onEdit(gist)}
+            onClick={() => onEdit(task)}
             className="btn btn-sm btn-icon-text btn-edit"
             title="修改"
           >
@@ -127,7 +126,7 @@ export default function GistCard({ gist, onDelete, onEdit }: GistCardProps) {
           <pre className="line-numbers">{lineNumbers}</pre>
           <pre>
             <code
-              className={`language-${getLanguageFromFilename(gist.filename)}`}
+              className={`language-${getLanguageFromFilename(task.filename)}`}
             >
               {displayContent}
             </code>

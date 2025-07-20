@@ -67,19 +67,18 @@ export function truncateText(text: string, maxLength: number): string {
 }
 
 /**
- * 验证gist数据
+ * 验证task数据
  */
-
 
 // --- 修改为 ---
 
 // 在函数上方定义一个输入类型
-interface GistValidationData {
+interface TaskValidationData {
   description?: unknown;
   content?: unknown;
 }
 
-export function validateGistData(data: GistValidationData): {
+export function validateTaskData(data: TaskValidationData): {
   isValid: boolean;
   errors: string[];
 } {
@@ -103,11 +102,11 @@ export function validateGistData(data: GistValidationData): {
   }
 
   // 只有在确定是字符串后才检查长度
-  if (typeof data.description === 'string' && data.description.length > 200) {
+  if (typeof data.description === "string" && data.description.length > 200) {
     errors.push("描述长度不能超过200个字符");
   }
 
-  if (typeof data.content === 'string' && data.content.length > 50000) {
+  if (typeof data.content === "string" && data.content.length > 50000) {
     errors.push("内容长度不能超过50000个字符");
   }
 

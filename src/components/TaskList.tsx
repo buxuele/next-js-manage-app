@@ -2,43 +2,43 @@
 
 import { useState } from "react";
 import { useSession, signOut } from "next-auth/react";
-import { Gist } from "@/lib/data";
-import GistCard from "./GistCard";
-import GistModal from "./GistModal";
+import { Task } from "@/lib/data";
+import TaskCard from "./TaskCard";
+import TaskModal from "./TaskModal";
 import Link from "next/link";
 import Image from "next/image";
 import "highlight.js/styles/atom-one-dark.min.css";
 
-interface GistListProps {
-  initialGists: Gist[];
+interface TaskListProps {
+  initialTasks: Task[];
 }
 
-export default function GistList({ initialGists }: GistListProps) {
+export default function TaskList({ initialTasks }: TaskListProps) {
   const { data: session } = useSession();
-  const [gists, setGists] = useState(initialGists);
+  const [tasks, setTasks] = useState(initialTasks);
   const [showModal, setShowModal] = useState(false);
-  const [gistToEdit, setGistToEdit] = useState<Gist | null>(null);
+  const [taskToEdit, setTaskToEdit] = useState<Task | null>(null);
 
-  const handleOpenModal = (gist: Gist | null) => {
-    setGistToEdit(gist);
+  const handleOpenModal = (task: Task | null) => {
+    setTaskToEdit(task);
     setShowModal(true);
   };
 
   const handleCloseModal = () => {
     setShowModal(false);
-    setGistToEdit(null);
+    setTaskToEdit(null);
   };
 
-  const handleSaveGist = async (gistData: Partial<Gist>): Promise<void> => {
-    const isEditing = !!gistData.id;
-    const url = isEditing ? `/api/gists/${gistData.id}` : "/api/gists";
+  const handleSaveTask = async (taskData: Partial<Task>): Promise<void> => {
+    const isEditing = !!taskData.id;
+    const url = isEditing ? `/api/tasks/${taskData.id}` : "/api/tasks";
     const method = isEditing ? "PUT" : "POST";
 
     try {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(gistData),
+        body: JSON.stringify(taskData),
       });
 
       if (!response.ok) {
@@ -50,14 +50,14 @@ export default function GistList({ initialGists }: GistListProps) {
         );
       }
 
-      const savedGist = await response.json();
+      const savedTask = await response.json();
 
       if (isEditing) {
-        setGists((currentGists) =>
-          currentGists.map((g) => (g.id === savedGist.id ? savedGist : g))
+        setTasks((currentTasks) =>
+          currentTasks.map((t) => (t.id === savedTask.id ? savedTask : t))
         );
       } else {
-        setGists((currentGists) => [savedGist, ...currentGists]);
+        setTasks((currentTasks) => [savedTask, ...currentTasks]);
       }
       handleCloseModal();
     } catch (error) {
@@ -68,9 +68,9 @@ export default function GistList({ initialGists }: GistListProps) {
     }
   };
 
-  const handleDeleteGist = (idToDelete: string) => {
-    setGists((currentGists) =>
-      currentGists.filter((gist) => gist.id !== idToDelete)
+  const handleDeleteTask = (idToDelete: string) => {
+    setTasks((currentTasks) =>
+      currentTasks.filter((task) => task.id !== idToDelete)
     );
   };
 
@@ -79,7 +79,7 @@ export default function GistList({ initialGists }: GistListProps) {
       <nav className="navbar navbar-expand-lg navbar-dark bg-dark border-bottom border-secondary sticky-top mb-4">
         <div className="container-fluid px-4">
           <Link className="navbar-brand" href="/">
-            <i className="bi bi-grid-1x2-fill"></i> 我的知识库
+            <i className="bi bi-grid-1x2-fill"></i> 我的任务库
           </Link>
 
           <div className="d-flex align-items-center gap-3">
@@ -140,28 +140,28 @@ export default function GistList({ initialGists }: GistListProps) {
         </div>
       </nav>
 
-      {gists.length === 0 ? (
+      {tasks.length === 0 ? (
         <p className="text-center text-muted mt-5">
-          空空如也，快添加你的第一个知识片段吧！
+          空空如也，快添加你的第一个任务吧！
         </p>
       ) : (
-        <div id="gists-container">
-          {gists.map((gist) => (
-            <GistCard
-              key={gist.id}
-              gist={gist}
-              onDelete={handleDeleteGist}
+        <div id="tasks-container">
+          {tasks.map((task) => (
+            <TaskCard
+              key={task.id}
+              task={task}
+              onDelete={handleDeleteTask}
               onEdit={handleOpenModal}
             />
           ))}
         </div>
       )}
 
-      <GistModal
+      <TaskModal
         show={showModal}
         onClose={handleCloseModal}
-        onSave={handleSaveGist}
-        gistToEdit={gistToEdit}
+        onSave={handleSaveTask}
+        taskToEdit={taskToEdit}
       />
     </>
   );
