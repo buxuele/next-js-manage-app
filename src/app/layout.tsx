@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import ErrorBoundary from "@/components/ErrorBoundary";
 import { SessionProvider } from "@/components/SessionProvider";
+import BootstrapClient from "@/components/BootstrapClient";
 import "./globals.css";
 import "../styles/flask-style.css";
 
@@ -30,8 +31,7 @@ export default function RootLayout({
         <SessionProvider>
           <ErrorBoundary>{children}</ErrorBoundary>
         </SessionProvider>
-
-        <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+        <BootstrapClient />
       </body>
     </html>
   );
