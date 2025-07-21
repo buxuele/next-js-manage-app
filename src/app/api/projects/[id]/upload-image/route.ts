@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-config";
 import { query } from "@/lib/db";
-import { writeFile, mkdir } from "fs/promises";
-import { join } from "path";
-import { v4 as uuidv4 } from "uuid";
 
 export async function POST(
   request: NextRequest,
@@ -57,55 +54,22 @@ export async function POST(
       );
     }
 
-    // 创建上传目录
-    const uploadDir = join(process.cwd(), "public", "uploads");
-    try {
-      await mkdir(uploadDir, { recursive: true });
-    } catch {
-      // 目录可能已存在，忽略错误
-    }
-
-    // 生成唯一文件名
-    const fileExtension = file.name.split(".").pop() || "jpg";
-    const uniqueFilename = `${projectId}_${uuidv4().substring(
-      0,
-      8
-    )}.${fileExtension}`;
-    const filePath = join(uploadDir, uniqueFilename);
-
-    // 保存文件
+    // 将文件转换为Base64
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
-    await writeFile(filePath, buffer);
+    const base64String = buffer.toString("base64");
+    const mimeType = file.type;
+    const dataUrl = `data:${mimeType};base64,${base64String}`;
 
-    // 删除旧图片（如果存在）
-    const project = projects[0];
-    if (project.image) {
-      try {
-        const oldImagePath = join(
-          process.cwd(),
-          "public",
-          project.image.replace("/", "")
-        );
-        const { existsSync, unlinkSync } = await import("fs");
-        if (existsSync(oldImagePath)) {
-          unlinkSync(oldImagePath);
-        }
-      } catch {
-        console.warn("删除旧图片失败");
-      }
-    }
-
-    // 更新数据库中的图片路径
-    const imageUrl = `/uploads/${uniqueFilename}`;
+    // 更新数据库中的图片数据
     await query(
       `UPDATE projects SET image = $1, updated_at = $2 WHERE id = $3`,
-      [imageUrl, Date.now(), projectId]
+      [dataUrl, Date.now(), projectId]
     );
 
     return NextResponse.json({
       success: true,
-      image_url: imageUrl,
+      image_url: dataUrl,
       message: "图片上传成功",
     });
   } catch (error) {
