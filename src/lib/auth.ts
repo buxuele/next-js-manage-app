@@ -191,3 +191,66 @@ export async function updateUser(
     throw new Error("Failed to update user");
   }
 }
+
+/**
+ * 获取或创建开发用户（仅在开发模式下使用）
+ */
+export async function getOrCreateDevUser(): Promise<User> {
+  // 使用固定的UUID作为开发用户ID
+  const devUserId = "00000000-0000-0000-0000-000000000001";
+  const devGithubId = 999999;
+
+  try {
+    // 先尝试通过GitHub ID查找开发用户
+    let devUser = await findUserByGithubId(devGithubId);
+
+    if (!devUser) {
+      // 如果不存在，创建开发用户
+      const client = await pool.connect();
+      const now = Date.now();
+
+      const result = await client.query(
+        `
+        INSERT INTO users (id, github_id, username, email, avatar_url, name, created_at, updated_at)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        ON CONFLICT (github_id) DO UPDATE SET 
+          username = EXCLUDED.username,
+          email = EXCLUDED.email,
+          avatar_url = EXCLUDED.avatar_url,
+          name = EXCLUDED.name,
+          updated_at = EXCLUDED.updated_at
+        RETURNING *
+      `,
+        [
+          devUserId,
+          devGithubId,
+          "developer",
+          "dev@localhost.com",
+          "/default-avatar.png",
+          "开发用户",
+          now,
+          now,
+        ]
+      );
+
+      client.release();
+
+      const row = result.rows[0];
+      devUser = {
+        id: row.id,
+        github_id: parseInt(row.github_id),
+        username: row.username,
+        email: row.email,
+        avatar_url: row.avatar_url,
+        name: row.name,
+        created_at: parseInt(row.created_at),
+        updated_at: parseInt(row.updated_at),
+      };
+    }
+
+    return devUser;
+  } catch (error) {
+    console.error("Error getting or creating dev user:", error);
+    throw new Error("Failed to get or create dev user");
+  }
+}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Project } from "@/types/project";
 import Image from "next/image";
 
@@ -16,6 +16,8 @@ export default function ProjectCard({
   onEdit,
 }: ProjectCardProps) {
   const [isOnline, setIsOnline] = useState<boolean | null>(null);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
 
   // 根据项目名称生成颜色
   const getProjectColor = (name: string) => {
@@ -37,6 +39,25 @@ export default function ProjectCard({
     }
     return colors[Math.abs(hash) % colors.length];
   };
+
+  // 点击外部关闭dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (
+        dropdownRef.current &&
+        !dropdownRef.current.contains(event.target as Node)
+      ) {
+        setShowDropdown(false);
+      }
+    };
+
+    if (showDropdown) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showDropdown]);
 
   // 检测项目在线状态
   useEffect(() => {
@@ -103,12 +124,10 @@ export default function ProjectCard({
 
   const handleOpenFolder = async () => {
     try {
-      const response = await fetch(`/api/projects/${project.id}/open-folder`, {
-        method: "POST",
-      });
+      const response = await fetch(`/api/open-folder/${project.id}`);
       const result = await response.json();
       if (!result.success) {
-        alert(`打开目录失败: ${result.error}`);
+        alert(`打开目录失败: ${result.message}`);
       }
     } catch (error) {
       console.error("打开目录失败:", error);
@@ -157,36 +176,54 @@ export default function ProjectCard({
       >
         {/* 卡片操作下拉菜单 - 右上角 */}
         <div
+          ref={dropdownRef}
           className="position-absolute"
           style={{ top: "1rem", right: "1rem" }}
         >
-          <div className="dropdown">
-            <button
-              className="btn btn-sm btn-outline-secondary"
-              type="button"
-              data-bs-toggle="dropdown"
+          <button
+            className="btn btn-sm btn-outline-secondary"
+            type="button"
+            onClick={() => setShowDropdown(!showDropdown)}
+            aria-expanded={showDropdown}
+          >
+            <i className="bi bi-three-dots"></i>
+          </button>
+
+          {showDropdown && (
+            <div
+              className="position-absolute end-0 mt-1 bg-white border rounded shadow-lg"
+              style={{
+                minWidth: "150px",
+                zIndex: 1000,
+                top: "100%",
+              }}
             >
-              <i className="bi bi-three-dots"></i>
-            </button>
-            <ul className="dropdown-menu dropdown-menu-end">
-              <li>
+              <div className="py-1">
                 <button
-                  className="dropdown-item"
-                  onClick={() => onEdit(project)}
+                  className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start d-flex align-items-center"
+                  type="button"
+                  onClick={() => {
+                    onEdit(project);
+                    setShowDropdown(false);
+                  }}
+                  style={{ cursor: "pointer" }}
                 >
                   <i className="bi bi-pencil me-2"></i>编辑
                 </button>
-              </li>
-              <li>
                 <button
-                  className="dropdown-item text-danger"
-                  onClick={handleDelete}
+                  className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start d-flex align-items-center text-danger"
+                  type="button"
+                  onClick={() => {
+                    handleDelete();
+                    setShowDropdown(false);
+                  }}
+                  style={{ cursor: "pointer" }}
                 >
                   <i className="bi bi-trash me-2"></i>删除
                 </button>
-              </li>
-            </ul>
-          </div>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* 项目标题 */}

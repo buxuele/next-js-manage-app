@@ -20,7 +20,6 @@ export default function ProjectManager({
   const [showModal, setShowModal] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
   const [showUserMenu, setShowUserMenu] = useState(false);
-  const [showThreeDotsMenu, setShowThreeDotsMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // 点击外部关闭菜单
@@ -32,20 +31,15 @@ export default function ProjectManager({
       if (showUserMenu && !target.closest(".user-menu-container")) {
         setShowUserMenu(false);
       }
-
-      // 检查是否点击在三点菜单外部
-      if (showThreeDotsMenu && !target.closest(".three-dots-menu-container")) {
-        setShowThreeDotsMenu(false);
-      }
     };
 
-    if (showUserMenu || showThreeDotsMenu) {
+    if (showUserMenu) {
       document.addEventListener("mousedown", handleClickOutside);
       return () => {
         document.removeEventListener("mousedown", handleClickOutside);
       };
     }
-  }, [showUserMenu, showThreeDotsMenu]);
+  }, [showUserMenu]);
 
   const handleOpenModal = (project: Project | null) => {
     setProjectToEdit(project);
@@ -58,17 +52,20 @@ export default function ProjectManager({
   };
 
   const handleSaveProject = async (
-    projectData: Partial<Project>
+    projectData: Partial<Project> & { imageFile?: File }
   ): Promise<void> => {
     const isEditing = !!projectData.id;
     const url = isEditing ? `/api/projects/${projectData.id}` : "/api/projects";
     const method = isEditing ? "PUT" : "POST";
 
     try {
+      // 先保存项目基本信息（不包含图片文件）
+      const { imageFile, ...basicProjectData } = projectData;
+
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(projectData),
+        body: JSON.stringify(basicProjectData),
       });
 
       if (!response.ok) {
@@ -80,7 +77,35 @@ export default function ProjectManager({
         );
       }
 
-      const savedProject = await response.json();
+      let savedProject = await response.json();
+
+      // 如果有图片文件，上传图片
+      if (imageFile) {
+        try {
+          const formData = new FormData();
+          formData.append("image", imageFile);
+
+          const imageResponse = await fetch(
+            `/api/projects/${savedProject.id}/upload-image`,
+            {
+              method: "POST",
+              body: formData,
+            }
+          );
+
+          const imageResult = await imageResponse.json();
+          if (imageResult.success) {
+            // 更新项目的图片URL
+            savedProject = { ...savedProject, image: imageResult.image_url };
+          } else {
+            console.warn("图片上传失败:", imageResult.error);
+            alert("项目保存成功，但图片上传失败: " + imageResult.error);
+          }
+        } catch (imageError) {
+          console.warn("图片上传失败:", imageError);
+          alert("项目保存成功，但图片上传失败");
+        }
+      }
 
       if (isEditing) {
         setProjects((currentProjects) =>
@@ -257,8 +282,11 @@ export default function ProjectManager({
         style={{ backgroundColor: "#fdfaf6" }}
       >
         <div className="container-fluid">
-          <Link className="navbar-brand text-dark" href="/">
-            <i className="bi bi-grid-3x3-gap me-2"></i>
+          <Link
+            className="navbar-brand text-dark"
+            href="/"
+            style={{ fontSize: "2rem", fontWeight: "bold" }}
+          >
             Start
           </Link>
 
@@ -272,51 +300,6 @@ export default function ProjectManager({
             >
               <i className="bi bi-plus-lg"></i>
             </button>
-
-            {/* 三点菜单 */}
-            <div className="position-relative three-dots-menu-container">
-              <button
-                className="btn btn-outline-primary rounded-circle shadow-sm"
-                style={{ width: "40px", height: "40px" }}
-                type="button"
-                onClick={() => setShowThreeDotsMenu(!showThreeDotsMenu)}
-                title="更多选项"
-              >
-                <i className="bi bi-three-dots"></i>
-              </button>
-
-              {showThreeDotsMenu && (
-                <div
-                  className="position-absolute end-0 mt-2 bg-white border rounded shadow-lg"
-                  style={{ minWidth: "150px", zIndex: 1000 }}
-                >
-                  <div className="py-1">
-                    <button
-                      className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
-                      type="button"
-                      onClick={() => {
-                        handleImport();
-                        setShowThreeDotsMenu(false);
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <i className="bi bi-upload me-2"></i>导入数据
-                    </button>
-                    <button
-                      className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
-                      type="button"
-                      onClick={() => {
-                        handleExport();
-                        setShowThreeDotsMenu(false);
-                      }}
-                      style={{ cursor: "pointer" }}
-                    >
-                      <i className="bi bi-download me-2"></i>导出数据
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
 
             {/* 用户菜单 - 使用React状态控制 */}
             {session && (

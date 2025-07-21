@@ -3,6 +3,30 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth-config";
 import { query } from "@/lib/db";
 
+// 处理不同格式的日期时间转换为时间戳
+function parseDateTime(dateValue: any): number {
+  if (!dateValue) {
+    return Date.now();
+  }
+
+  // 如果已经是数字（时间戳），直接返回
+  if (typeof dateValue === "number") {
+    return dateValue;
+  }
+
+  // 如果是字符串，尝试解析
+  if (typeof dateValue === "string") {
+    // 处理 "2025-07-18 18:00:06" 格式
+    const parsed = new Date(dateValue);
+    if (!isNaN(parsed.getTime())) {
+      return parsed.getTime();
+    }
+  }
+
+  // 如果无法解析，返回当前时间
+  return Date.now();
+}
+
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions);
@@ -61,8 +85,8 @@ export async function POST(request: NextRequest) {
             project.url,
             project.path || "",
             project.image || "",
-            project.created_at || now,
-            project.updated_at || now,
+            parseDateTime(project.created_at) || now,
+            parseDateTime(project.updated_at) || now,
           ]
         );
 

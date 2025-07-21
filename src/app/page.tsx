@@ -1,21 +1,21 @@
 import { getServerSession } from "next-auth/next";
 import { redirect } from "next/navigation";
 import { authOptions } from "@/lib/auth-config";
+import { query } from "@/lib/db";
 import ProjectManager from "@/components/ProjectManager";
 import { Project } from "@/types/project";
 
-async function getProjects(): Promise<Project[]> {
+async function getProjects(userId: string): Promise<Project[]> {
   try {
-    const response = await fetch(`${process.env.NEXTAUTH_URL}/api/projects`, {
-      cache: "no-store",
-    });
-    if (!response.ok) {
-      console.error("Failed to fetch projects");
-      return [];
-    }
-    return await response.json();
+    const projects = await query(
+      `SELECT * FROM projects 
+       WHERE user_id = $1 
+       ORDER BY updated_at DESC`,
+      [userId]
+    );
+    return projects;
   } catch (error) {
-    console.error("Error fetching projects:", error);
+    console.error("获取项目列表失败:", error);
     return [];
   }
 }
@@ -28,8 +28,8 @@ export default async function HomePage() {
     redirect("/login");
   }
 
-  // 直接在根路径显示项目管理界面，不重定向
-  const projects = await getProjects();
+  // 直接使用数据库查询获取项目数据
+  const projects = await getProjects(session.user.id);
 
   return <ProjectManager initialProjects={projects} />;
 }
