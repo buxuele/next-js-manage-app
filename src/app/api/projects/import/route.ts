@@ -73,12 +73,19 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // 获取用户的所有项目以返回给前端
+    const allProjects = await query(
+      `SELECT * FROM projects WHERE user_id = $1 ORDER BY updated_at DESC`,
+      [session.user.id]
+    );
+
     return NextResponse.json({
       success: true,
       data: {
         imported,
         total,
         errors,
+        projects: allProjects, // 返回所有项目数据
       },
     });
   } catch (error) {

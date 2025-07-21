@@ -373,6 +373,27 @@ html {
 
 .dropdown-item {
   transition: background-color 0.15s ease-in-out;
+  color: #495057 !important;
+}
+
+/* --- 修复用户菜单背景问题 --- */
+.user-menu-container .position-absolute,
+.three-dots-menu-container .position-absolute {
+  background-color: #ffffff !important;
+  border: 1px solid #dee2e6 !important;
+  color: #495057 !important;
+}
+
+.user-menu-container .dropdown-item,
+.three-dots-menu-container .dropdown-item {
+  background-color: transparent !important;
+  color: #495057 !important;
+}
+
+.user-menu-container .dropdown-item:hover,
+.three-dots-menu-container .dropdown-item:hover {
+  background-color: #f8f9fa !important;
+  color: #495057 !important;
 }
 
 /* --- 响应式布局 --- */

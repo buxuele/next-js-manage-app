@@ -189,13 +189,50 @@ export default function ProjectManager({
       const result = await response.json();
 
       if (result.success) {
-        const { imported, total, errors } = result.data;
+        const {
+          imported,
+          total,
+          errors,
+          projects: importedProjects,
+        } = result.data;
         let message = `导入完成！成功导入 ${imported}/${total} 个项目`;
         if (errors.length > 0) {
           message += `\n\n错误信息:\n${errors.join("\n")}`;
         }
         alert(message);
-        window.location.reload();
+
+        // 立即更新项目列表，而不是刷新页面
+        if (importedProjects && importedProjects.length > 0) {
+          if (replaceExisting) {
+            // 如果是替换模式，直接设置新的项目列表
+            setProjects(importedProjects);
+          } else {
+            // 如果是添加模式，重新获取所有项目
+            try {
+              const refreshResponse = await fetch("/api/projects");
+              if (refreshResponse.ok) {
+                const refreshedProjects = await refreshResponse.json();
+                setProjects(refreshedProjects);
+              } else {
+                // 如果获取失败，至少添加新导入的项目
+                setProjects((currentProjects) => [
+                  ...importedProjects,
+                  ...currentProjects,
+                ]);
+              }
+            } catch (refreshError) {
+              console.error("刷新项目列表失败:", refreshError);
+              // 如果获取失败，至少添加新导入的项目
+              setProjects((currentProjects) => [
+                ...importedProjects,
+                ...currentProjects,
+              ]);
+            }
+          }
+        } else {
+          // 如果没有返回项目数据，则刷新页面作为备选方案
+          window.location.reload();
+        }
       } else {
         alert("导入失败: " + result.error);
       }
@@ -214,7 +251,7 @@ export default function ProjectManager({
       className="container-fluid main-container py-4"
       style={{ backgroundColor: "#fdfaf6", minHeight: "100vh" }}
     >
-      {/* 顶部导航栏 */}
+      {/* 顶部导航栏 - 单行布局 */}
       <nav
         className="navbar navbar-expand-lg navbar-light mb-4"
         style={{ backgroundColor: "#fdfaf6" }}
@@ -222,10 +259,65 @@ export default function ProjectManager({
         <div className="container-fluid">
           <Link className="navbar-brand text-dark" href="/">
             <i className="bi bi-grid-3x3-gap me-2"></i>
-            我的项目中心
+            Start
           </Link>
 
           <div className="d-flex align-items-center gap-3">
+            {/* 添加按钮 */}
+            <button
+              className="btn btn-primary rounded-circle shadow-sm"
+              style={{ width: "40px", height: "40px" }}
+              onClick={() => handleOpenModal(null)}
+              title="添加项目"
+            >
+              <i className="bi bi-plus-lg"></i>
+            </button>
+
+            {/* 三点菜单 */}
+            <div className="position-relative three-dots-menu-container">
+              <button
+                className="btn btn-outline-primary rounded-circle shadow-sm"
+                style={{ width: "40px", height: "40px" }}
+                type="button"
+                onClick={() => setShowThreeDotsMenu(!showThreeDotsMenu)}
+                title="更多选项"
+              >
+                <i className="bi bi-three-dots"></i>
+              </button>
+
+              {showThreeDotsMenu && (
+                <div
+                  className="position-absolute end-0 mt-2 bg-white border rounded shadow-lg"
+                  style={{ minWidth: "150px", zIndex: 1000 }}
+                >
+                  <div className="py-1">
+                    <button
+                      className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                      type="button"
+                      onClick={() => {
+                        handleImport();
+                        setShowThreeDotsMenu(false);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <i className="bi bi-upload me-2"></i>导入数据
+                    </button>
+                    <button
+                      className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                      type="button"
+                      onClick={() => {
+                        handleExport();
+                        setShowThreeDotsMenu(false);
+                      }}
+                      style={{ cursor: "pointer" }}
+                    >
+                      <i className="bi bi-download me-2"></i>导出数据
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
+
             {/* 用户菜单 - 使用React状态控制 */}
             {session && (
               <div className="position-relative user-menu-container">
@@ -313,62 +405,6 @@ export default function ProjectManager({
           </div>
         </div>
       </nav>
-
-      {/* 主标题和添加按钮 */}
-      <div className="d-flex justify-content-between align-items-center mb-5">
-        <h1 className="display-4 fw-bold text-dark">start</h1>
-        <div className="d-flex gap-3">
-          <button
-            className="btn btn-primary btn-lg rounded-circle shadow-lg"
-            style={{ width: "60px", height: "60px" }}
-            onClick={() => handleOpenModal(null)}
-          >
-            <i className="bi bi-plus-lg"></i>
-          </button>
-          <div className="position-relative three-dots-menu-container">
-            <button
-              className="btn btn-outline-primary btn-lg rounded-circle shadow-lg"
-              style={{ width: "60px", height: "60px" }}
-              type="button"
-              onClick={() => setShowThreeDotsMenu(!showThreeDotsMenu)}
-            >
-              <i className="bi bi-three-dots"></i>
-            </button>
-
-            {showThreeDotsMenu && (
-              <div
-                className="position-absolute end-0 mt-2 bg-white border rounded shadow-lg"
-                style={{ minWidth: "150px", zIndex: 1000 }}
-              >
-                <div className="py-1">
-                  <button
-                    className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
-                    type="button"
-                    onClick={() => {
-                      handleImport();
-                      setShowThreeDotsMenu(false);
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <i className="bi bi-upload me-2"></i>导入数据
-                  </button>
-                  <button
-                    className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
-                    type="button"
-                    onClick={() => {
-                      handleExport();
-                      setShowThreeDotsMenu(false);
-                    }}
-                    style={{ cursor: "pointer" }}
-                  >
-                    <i className="bi bi-download me-2"></i>导出数据
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
 
       {/* 项目网格 */}
       {projects.length === 0 ? (
