@@ -8,7 +8,9 @@ import Image from "next/image";
 interface ProjectModalProps {
   show: boolean;
   onClose: () => void;
-  onSave: (projectData: Partial<Project>) => Promise<void>;
+  onSave: (
+    projectData: Partial<Project> & { imageFile?: File }
+  ) => Promise<void>;
   projectToEdit: Project | null;
 }
 
@@ -110,7 +112,7 @@ export default function ProjectModal({
         description: description.trim(),
         url: url.trim(),
         path: path.trim(),
-        imageFile: imageFile, // 传递图片文件
+        imageFile: imageFile || undefined, // 传递图片文件
       });
     } finally {
       setIsLoading(false);

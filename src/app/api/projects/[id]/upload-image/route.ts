@@ -8,7 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions);
@@ -16,7 +16,7 @@ export async function POST(
       return NextResponse.json({ error: "未授权" }, { status: 401 });
     }
 
-    const projectId = params.id;
+    const { id: projectId } = await params;
 
     // 验证项目是否属于当前用户
     const projects = await query(
@@ -61,7 +61,7 @@ export async function POST(
     const uploadDir = join(process.cwd(), "public", "uploads");
     try {
       await mkdir(uploadDir, { recursive: true });
-    } catch (error) {
+    } catch {
       // 目录可能已存在，忽略错误
     }
 
