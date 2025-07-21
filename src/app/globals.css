@@ -365,6 +365,16 @@ html {
   color: #495057 !important;
 }
 
+/* --- 自定义下拉菜单样式 --- */
+.dropdown-item:hover {
+  background-color: #f8f9fa !important;
+  color: #495057 !important;
+}
+
+.dropdown-item {
+  transition: background-color 0.15s ease-in-out;
+}
+
 /* --- 响应式布局 --- */
 @media (max-width: 1600px) {
   #projects-container {

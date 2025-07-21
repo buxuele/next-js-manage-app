@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import { Project } from "@/types/project";
 import ProjectCard from "./ProjectCard";
@@ -19,7 +19,33 @@ export default function ProjectManager({
   const [projects, setProjects] = useState(initialProjects);
   const [showModal, setShowModal] = useState(false);
   const [projectToEdit, setProjectToEdit] = useState<Project | null>(null);
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showThreeDotsMenu, setShowThreeDotsMenu] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // 点击外部关闭菜单
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Element;
+
+      // 检查是否点击在用户菜单外部
+      if (showUserMenu && !target.closest(".user-menu-container")) {
+        setShowUserMenu(false);
+      }
+
+      // 检查是否点击在三点菜单外部
+      if (showThreeDotsMenu && !target.closest(".three-dots-menu-container")) {
+        setShowThreeDotsMenu(false);
+      }
+    };
+
+    if (showUserMenu || showThreeDotsMenu) {
+      document.addEventListener("mousedown", handleClickOutside);
+      return () => {
+        document.removeEventListener("mousedown", handleClickOutside);
+      };
+    }
+  }, [showUserMenu, showThreeDotsMenu]);
 
   const handleOpenModal = (project: Project | null) => {
     setProjectToEdit(project);
@@ -200,20 +226,13 @@ export default function ProjectManager({
           </Link>
 
           <div className="d-flex align-items-center gap-3">
-            {/* 临时调试信息 */}
-            <small className="text-muted">
-              Session: {session ? "已登录" : "未登录"} | 用户:{" "}
-              {session?.user?.name || session?.user?.email || "无"}
-            </small>
-
-            {session ? (
-              <div className="dropdown">
+            {/* 用户菜单 - 使用React状态控制 */}
+            {session && (
+              <div className="position-relative user-menu-container">
                 <button
-                  className="btn btn-outline-dark dropdown-toggle d-flex align-items-center gap-2"
                   type="button"
-                  data-bs-toggle="dropdown"
-                  aria-expanded="false"
-                  id="userDropdown"
+                  className="btn btn-outline-dark d-flex align-items-center gap-2"
+                  onClick={() => setShowUserMenu(!showUserMenu)}
                 >
                   {session.user?.image && (
                     <Image
@@ -229,47 +248,68 @@ export default function ProjectManager({
                       session.user?.name ||
                       "用户"}
                   </span>
+                  <i
+                    className={`bi bi-chevron-${showUserMenu ? "up" : "down"}`}
+                  ></i>
                 </button>
-                <ul
-                  className="dropdown-menu dropdown-menu-end"
-                  aria-labelledby="userDropdown"
-                >
-                  <li>
-                    <button className="dropdown-item" onClick={handleExport}>
-                      <i className="bi bi-download me-2"></i>
-                      导出数据
-                    </button>
-                  </li>
-                  <li>
-                    <button className="dropdown-item" onClick={handleImport}>
-                      <i className="bi bi-upload me-2"></i>
-                      导入数据
-                    </button>
-                  </li>
-                  <li>
-                    <hr className="dropdown-divider" />
-                  </li>
-                  <li>
-                    <button
-                      className="dropdown-item"
-                      onClick={() => signOut({ callbackUrl: "/login" })}
-                    >
-                      <i className="bi bi-box-arrow-right me-2"></i>
-                      退出登录
-                    </button>
-                  </li>
-                </ul>
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileChange}
-                  style={{ display: "none" }}
-                />
+
+                {showUserMenu && (
+                  <div
+                    className="position-absolute end-0 mt-2 bg-white border rounded shadow-lg"
+                    style={{ minWidth: "200px", zIndex: 1000 }}
+                  >
+                    <div className="py-1">
+                      <button
+                        className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                        type="button"
+                        onClick={() => {
+                          handleExport();
+                          setShowUserMenu(false);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className="bi bi-download me-2"></i>
+                        导出数据
+                      </button>
+                      <button
+                        className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                        type="button"
+                        onClick={() => {
+                          handleImport();
+                          setShowUserMenu(false);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className="bi bi-upload me-2"></i>
+                        导入数据
+                      </button>
+                      <hr className="my-1" />
+                      <button
+                        className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                        type="button"
+                        onClick={() => {
+                          signOut({ callbackUrl: "/login" });
+                          setShowUserMenu(false);
+                        }}
+                        style={{ cursor: "pointer" }}
+                      >
+                        <i className="bi bi-box-arrow-right me-2"></i>
+                        退出登录
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
-            ) : (
-              <div className="text-muted">未登录</div>
             )}
+
+            {/* 隐藏的文件输入 */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              onChange={handleFileChange}
+              style={{ display: "none" }}
+            />
           </div>
         </div>
       </nav>
@@ -285,28 +325,47 @@ export default function ProjectManager({
           >
             <i className="bi bi-plus-lg"></i>
           </button>
-          <div className="dropdown">
+          <div className="position-relative three-dots-menu-container">
             <button
               className="btn btn-outline-primary btn-lg rounded-circle shadow-lg"
               style={{ width: "60px", height: "60px" }}
               type="button"
-              data-bs-toggle="dropdown"
-              aria-expanded="false"
+              onClick={() => setShowThreeDotsMenu(!showThreeDotsMenu)}
             >
               <i className="bi bi-three-dots"></i>
             </button>
-            <ul className="dropdown-menu dropdown-menu-end">
-              <li>
-                <button className="dropdown-item" onClick={handleImport}>
-                  <i className="bi bi-upload me-2"></i>导入数据
-                </button>
-              </li>
-              <li>
-                <button className="dropdown-item" onClick={handleExport}>
-                  <i className="bi bi-download me-2"></i>导出数据
-                </button>
-              </li>
-            </ul>
+
+            {showThreeDotsMenu && (
+              <div
+                className="position-absolute end-0 mt-2 bg-white border rounded shadow-lg"
+                style={{ minWidth: "150px", zIndex: 1000 }}
+              >
+                <div className="py-1">
+                  <button
+                    className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                    type="button"
+                    onClick={() => {
+                      handleImport();
+                      setShowThreeDotsMenu(false);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <i className="bi bi-upload me-2"></i>导入数据
+                  </button>
+                  <button
+                    className="dropdown-item px-3 py-2 border-0 bg-transparent w-100 text-start"
+                    type="button"
+                    onClick={() => {
+                      handleExport();
+                      setShowThreeDotsMenu(false);
+                    }}
+                    style={{ cursor: "pointer" }}
+                  >
+                    <i className="bi bi-download me-2"></i>导出数据
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
