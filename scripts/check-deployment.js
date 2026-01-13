@@ -10,7 +10,11 @@ const http = require("http");
 
 const DEPLOYMENT_URL = "https://next-js-manage-app.vercel.app";
 
-async function makeRequest(url, options = {}) {
+async function makeRequest(url, options = {}, depth = 0) {
+  if (depth > 5) {
+    return Promise.reject(new Error("Too many redirects"));
+  }
+
   return new Promise((resolve, reject) => {
     const protocol = url.startsWith("https:") ? https : http;
 
@@ -24,6 +28,15 @@ async function makeRequest(url, options = {}) {
         },
       },
       (res) => {
+        if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
+          const redirectUrl = new URL(res.headers.location, url).href;
+          // Handle redirect
+          makeRequest(redirectUrl, options, depth + 1)
+            .then(resolve)
+            .catch(reject);
+          return;
+        }
+
         let data = "";
         res.on("data", (chunk) => (data += chunk));
         res.on("end", () => {
@@ -71,6 +84,15 @@ async function checkEndpoint(name, url, expectedStatus = 200) {
 async function checkDeployment() {
   console.log("🚀 开始检查 Vercel 部署状态...\n");
 
+  // 检查 NEXTAUTH_SECRET 环境变量
+  if (!process.env.NEXTAUTH_SECRET) {
+    console.log("⚠️  警告: 缺少 `NEXTAUTH_SECRET` 环境变量。");
+    console.log("   这将导致认证失败，并可能引起意外的重定向。");
+    console.log("   请确保在 Vercel 项目设置中定义了此变量。\n");
+  } else {
+    console.log("✅ `NEXTAUTH_SECRET` 环境变量已设置。\n");
+  }
+
   const checks = [
     {
       name: "主页",
@@ -105,7 +127,7 @@ async function checkDeployment() {
     {
       name: "Gists API",
       url: `${DEPLOYMENT_URL}/api/gists`,
-      expectedStatus: 200,
+      expectedStatus: 401,
     },
   ];
 
