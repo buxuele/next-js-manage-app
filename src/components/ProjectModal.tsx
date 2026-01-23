@@ -67,7 +67,7 @@ export default function ProjectModal({
     }
   }, [show, modalInstance]);
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       // 检查文件类型
@@ -76,20 +76,53 @@ export default function ProjectModal({
         return;
       }
 
-      // 检查文件大小 (5MB)
-      if (file.size > 5 * 1024 * 1024) {
-        alert("图片文件不能超过5MB");
+      // 检查文件大小 (降低到2MB以提高性能)
+      if (file.size > 2 * 1024 * 1024) {
+        alert("图片文件不能超过2MB，请压缩后上传以获得更好的性能");
         return;
       }
 
-      setImageFile(file);
+      let processedFile = file;
+
+      // 如果文件较大，自动压缩
+      if (file.size > 500 * 1024) {
+        // 大于500KB自动压缩
+        try {
+          const { compressImage } = await import("@/utils/imageCompression");
+          console.log("开始压缩图片...");
+          processedFile = await compressImage(file, {
+            maxWidth: 800,
+            maxHeight: 600,
+            quality: 0.8,
+            maxSizeKB: 400,
+          });
+          console.log(
+            `图片压缩完成: ${(file.size / 1024).toFixed(1)}KB → ${(
+              processedFile.size / 1024
+            ).toFixed(1)}KB`
+          );
+        } catch (error) {
+          console.warn("图片压缩失败，使用原图:", error);
+          // 压缩失败时使用原图
+        }
+      }
+
+      // 如果处理后的文件仍然较大，给出警告
+      if (processedFile.size > 1 * 1024 * 1024) {
+        const sizeInMB = (processedFile.size / 1024 / 1024).toFixed(1);
+        console.warn(
+          `上传较大图片: ${file.name} (${sizeInMB}MB)，可能需要较长时间处理`
+        );
+      }
+
+      setImageFile(processedFile);
 
       // 创建预览
       const reader = new FileReader();
       reader.onload = (e) => {
         setImagePreview(e.target?.result as string);
       };
-      reader.readAsDataURL(file);
+      reader.readAsDataURL(processedFile);
     }
   };
 

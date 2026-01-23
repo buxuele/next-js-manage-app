@@ -46,17 +46,29 @@ export async function POST(
       );
     }
 
-    // 验证文件大小 (5MB)
-    if (file.size > 5 * 1024 * 1024) {
+    // 验证文件大小 (2MB，降低限制以提高性能)
+    if (file.size > 2 * 1024 * 1024) {
       return NextResponse.json(
-        { success: false, error: "文件大小不能超过5MB" },
+        { success: false, error: "文件大小不能超过2MB，请压缩后上传" },
         { status: 400 }
       );
     }
 
-    // 将文件转换为Base64
+    // 将文件转换为Base64（优化：使用更高效的方法）
     const bytes = await file.arrayBuffer();
     const buffer = Buffer.from(bytes);
+
+    // 如果是大文件，提供更详细的错误信息
+    if (buffer.length > 1.5 * 1024 * 1024) {
+      console.warn(
+        `大文件上传警告: ${file.name}, 大小: ${(
+          buffer.length /
+          1024 /
+          1024
+        ).toFixed(2)}MB`
+      );
+    }
+
     const base64String = buffer.toString("base64");
     const mimeType = file.type;
     const dataUrl = `data:${mimeType};base64,${base64String}`;

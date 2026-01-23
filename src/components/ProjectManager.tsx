@@ -82,9 +82,16 @@ export default function ProjectManager({
       // 如果有图片文件，上传图片
       if (imageFile) {
         try {
+          console.log("开始上传图片...", {
+            fileName: imageFile.name,
+            fileSize: `${(imageFile.size / 1024 / 1024).toFixed(2)}MB`,
+            fileType: imageFile.type,
+          });
+
           const formData = new FormData();
           formData.append("image", imageFile);
 
+          const uploadStartTime = Date.now();
           const imageResponse = await fetch(
             `/api/projects/${savedProject.id}/upload-image`,
             {
@@ -93,17 +100,21 @@ export default function ProjectManager({
             }
           );
 
+          const uploadTime = Date.now() - uploadStartTime;
+          console.log(`图片上传耗时: ${uploadTime}ms`);
+
           const imageResult = await imageResponse.json();
           if (imageResult.success) {
             // 更新项目的图片URL
             savedProject = { ...savedProject, image: imageResult.image_url };
+            console.log("图片上传成功");
           } else {
             console.warn("图片上传失败:", imageResult.error);
             alert("项目保存成功，但图片上传失败: " + imageResult.error);
           }
         } catch (imageError) {
           console.warn("图片上传失败:", imageError);
-          alert("项目保存成功，但图片上传失败");
+          alert("项目保存成功，但图片上传失败: 网络错误或服务器问题");
         }
       }
 
